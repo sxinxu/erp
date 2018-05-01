@@ -1,0 +1,69 @@
+﻿<?xml version="1.0" encoding="UTF-8"?>
+<soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+  <soapenv:Header>
+    <ebl:RequesterCredentials soapenv:mustUnderstand="0" xmlns:ns="urn:ebay:apis:eBLBaseComponents" xmlns:ebl="urn:ebay:apis:eBLBaseComponents">
+      <ebl:NotificationSignature xmlns:ebl="urn:ebay:apis:eBLBaseComponents">OOLkEdfK1IsoEZLxCjkgkw==</ebl:NotificationSignature>
+    </ebl:RequesterCredentials>
+  </soapenv:Header>
+  <soapenv:Body>
+    <GetMemberMessagesResponse xmlns="urn:ebay:apis:eBLBaseComponents">
+      <Timestamp>2018-05-01T01:20:17.407Z</Timestamp>
+      <Ack>Success</Ack>
+      <CorrelationID>1297902141040</CorrelationID>
+      <Version>1057</Version>
+      <Build>E1057_CORE_APIMSG_18686789_R1</Build>
+      <NotificationEventName>AskSellerQuestion</NotificationEventName>
+      <RecipientUserID>notesonboard</RecipientUserID>
+      <EIASToken>nY+sHZ2PrBmdj6wVnY+sEZ2PrA2dj6AGkIemCpiLpASdj6x9nY+seQ==</EIASToken>
+      <MemberMessage>
+        <MemberMessageExchange>
+          <Item>
+            <ItemID>282227412191</ItemID>
+            <ListingDetails>
+              <StartTime>2016-10-21T03:24:43.000Z</StartTime>
+              <EndTime>2018-05-14T03:24:43.000Z</EndTime>
+              <ViewItemURL>http://www.ebay.com/itm/00-06-Chevy-Suburban-Tahoe-Clear-Bumper-Fog-Lights-Driving-Lamps-/282227412191</ViewItemURL>
+            </ListingDetails>
+            <Seller>
+              <UserID>notesonboard</UserID>
+            </Seller>
+            <SellingStatus>
+              <CurrentPrice currencyID="USD">18.66</CurrentPrice>
+            </SellingStatus>
+            <TimeLeft>P13DT2H4M26S</TimeLeft>
+            <Title>For 00-06 Chevy Suburban/ Tahoe Clear Bumper Fog Lights Driving Lamps</Title>
+            <ConditionID>1000</ConditionID>
+            <ConditionDisplayName>New</ConditionDisplayName>
+          </Item>
+          <Question>
+            <MessageType>AskSellerQuestion</MessageType>
+            <QuestionType>General</QuestionType>
+            <DisplayToPublic>false</DisplayToPublic>
+            <SenderID>serva-perez</SenderID>
+            <SenderEmail>servap_guiy4725ljo@members.ebay.com</SenderEmail>
+            <RecipientID>notesonboard</RecipientID>
+            <Subject>serva-perez has sent a question about item #282227412191, ending on May-13-18 20:24:43 PDT - For 00-06 Chevy Suburban/ Tahoe Clear Bumper Fog Lights Driving Lamps</Subject>
+            <Body>Your fog lights melted with the lights can u send me a new pair??</Body>
+            <MessageID>1715482176016</MessageID>
+          </Question>
+          <MessageStatus>Unanswered</MessageStatus>
+          <CreationDate>2018-05-01T01:20:16.000Z</CreationDate>
+          <LastModifiedDate>2018-05-01T01:20:16.000Z</LastModifiedDate>
+          <MessageMedia>
+            <MediaURL>https://i.ebayimg.com/00/s/MTU5OVgxMTk5/z/0BIAAOSwEaNa58C1/$_12.JPG?set_id=880000500F</MediaURL>
+            <MediaName>Image2</MediaName>
+          </MessageMedia>
+          <MessageMedia>
+            <MediaURL>https://i.ebayimg.com/00/s/MTU5OVgxMTk5/z/U~YAAOSwBIRa58C2/$_12.JPG?set_id=880000500F</MediaURL>
+            <MediaName>Image3</MediaName>
+          </MessageMedia>
+        </MemberMessageExchange>
+      </MemberMessage>
+      <PaginationResult>
+        <TotalNumberOfPages>1</TotalNumberOfPages>
+        <TotalNumberOfEntries>1</TotalNumberOfEntries>
+      </PaginationResult>
+      <HasMoreItems>false</HasMoreItems>
+    </GetMemberMessagesResponse>
+  </soapenv:Body>
+</soapenv:Envelope>
