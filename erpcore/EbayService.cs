@@ -210,36 +210,51 @@ namespace erpcore
             {
                 try
                 {
-                    WebResponse response = request.GetResponse();
-                    output = XElement.Load(response.GetResponseStream());
-                    string ack = (string)output.Element(ebayNs + "Ack");
-                    if (ack == "Success")
+                    using (WebResponse response = request.GetResponse())
                     {
-                        break;
-                    }
-                    else if (ack == "Warning")
-                    {
-                        // Log warning
-                    }
-                    else if (ack == "Failure")
-                    {
-                        foreach (XElement error in output.Descendants(ebayNs + "Errors"))
+
+                        output = XElement.Load(response.GetResponseStream());
+                        string ack = (string)output.Element(ebayNs + "Ack");
+                        if (ack == "Success")
                         {
-                            string severityCode = (string)error.Element(ebayNs + "SeverityCode");
-                            if( severityCode == "Warning")
+                            break;
+                        }
+                        else if (ack == "Warning")
+                        {
+                            // Log warning
+                        }
+                        else if (ack == "Failure")
+                        {
+                            foreach (XElement error in output.Descendants(ebayNs + "Errors"))
                             {
-                                // Log warning
-                            }
-                            else if( severityCode == "Error")
-                            {
-                                string errorClassification = (string)error.Element(ebayNs + "ErrorClassification");
+                                string severityCode = (string)error.Element(ebayNs + "SeverityCode");
+                                int errorCode = (int)error.Element(ebayNs + "ErrorCode");
+                                if (severityCode == "Warning")
+                                {
+                                    // Log warning
+                                }
+                                else if (severityCode == "Error")
+                                {
+                                    string errorClassification = (string)error.Element(ebayNs + "ErrorClassification");
+                                    if (errorClassification == "SystemError")
+                                    {
+                                        if (errorCode == 21359)
+                                        {
+                                            request.Timeout = request.Timeout * 2;
+                                        }
+                                    }
+                                }
                             }
                         }
                     }
-                }
-                catch(Exception e)
-                {
 
+                }
+                catch(WebException webException)
+                {
+                    if( webException.Status == WebExceptionStatus.Timeout)
+                    {
+                        request.Timeout = request.Timeout * 2;
+                    }
                 }
             }
 

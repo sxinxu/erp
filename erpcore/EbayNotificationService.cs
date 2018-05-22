@@ -31,7 +31,11 @@ namespace erpcore
                     }
                     else if (notificationEventName == "AskSellerQuestion")
                     {
-
+                        AskSellerQuestion(childElement);
+                    }
+                    else if (notificationEventName == "MyMessagesM2MMessage")
+                    {
+                        MyMessagesM2MMessage(childElement);
                     }
                     else if (notificationEventName == "ItemListed")
                     {
@@ -194,7 +198,14 @@ namespace erpcore
             message.EbayUser = "vipadmin";
             message.Classid = classId;
 
+            m_context.EbayMessage.Add(message);
+
             m_context.SaveChanges();
+        }
+
+        private void MyMessagesM2MMessage(XElement element)
+        {
+
         }
 
         private void Itemlisted(XElement element)
