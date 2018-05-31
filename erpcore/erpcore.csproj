@@ -5,9 +5,15 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <PackageReference Include="Claytondus.AmazonMWS.Orders" Version="0.3.0" />
     <PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="2.0.3" />
     <PackageReference Include="Microsoft.EntityFrameworkCore.Tools" Version="2.0.1" />
+    <PackageReference Include="NLog.Config" Version="4.5.4" />
     <PackageReference Include="Pomelo.EntityFrameworkCore.MySql" Version="2.0.1" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\MarketplaceWebService\MarketplaceWebService.csproj" />
   </ItemGroup>
 
 </Project>
