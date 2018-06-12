@@ -3,8 +3,6 @@ Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio 15
 VisualStudioVersion = 15.0.27428.2043
 MinimumVisualStudioVersion = 10.0.40219.1
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "erp", "erp\erp.csproj", "{44F9A9DE-4EA9-464C-9D19-D7C850BED632}"
-EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "erpcore", "erpcore\erpcore.csproj", "{4CE7EF6B-B004-44D5-8371-4D4623783EBA}"
 	ProjectSection(ProjectDependencies) = postProject
 		{C86E76E8-C936-4666-A9B1-B96FDD9AEAA2} = {C86E76E8-C936-4666-A9B1-B96FDD9AEAA2}
@@ -14,16 +12,14 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "erpcoretests", "erpcoretest
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "MarketplaceWebService", "MarketplaceWebService\MarketplaceWebService.csproj", "{C86E76E8-C936-4666-A9B1-B96FDD9AEAA2}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "erpWebAPI", "erpWebAPI\erpWebAPI.csproj", "{77E8BF10-B1BB-4A6F-9F39-1A8F84F72441}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
 		Release|Any CPU = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(ProjectConfigurationPlatforms) = postSolution
-		{44F9A9DE-4EA9-464C-9D19-D7C850BED632}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{44F9A9DE-4EA9-464C-9D19-D7C850BED632}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{44F9A9DE-4EA9-464C-9D19-D7C850BED632}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{44F9A9DE-4EA9-464C-9D19-D7C850BED632}.Release|Any CPU.Build.0 = Release|Any CPU
 		{4CE7EF6B-B004-44D5-8371-4D4623783EBA}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
 		{4CE7EF6B-B004-44D5-8371-4D4623783EBA}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{4CE7EF6B-B004-44D5-8371-4D4623783EBA}.Release|Any CPU.ActiveCfg = Release|Any CPU
@@ -36,6 +32,10 @@ Global
 		{C86E76E8-C936-4666-A9B1-B96FDD9AEAA2}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{C86E76E8-C936-4666-A9B1-B96FDD9AEAA2}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{C86E76E8-C936-4666-A9B1-B96FDD9AEAA2}.Release|Any CPU.Build.0 = Release|Any CPU
+		{77E8BF10-B1BB-4A6F-9F39-1A8F84F72441}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{77E8BF10-B1BB-4A6F-9F39-1A8F84F72441}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{77E8BF10-B1BB-4A6F-9F39-1A8F84F72441}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{77E8BF10-B1BB-4A6F-9F39-1A8F84F72441}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

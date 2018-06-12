@@ -7,11 +7,11 @@ namespace erpcore
 {
     public interface IEbayService
     {
+        void ProcessPlatformNotification(string content);
+
         void GetSellerList(string ebayAccount);
 
         void GetItem(string ebayAccount, string itemId);
-
-        void AddItem(XElement item);
 
         void ReviseListingQuantity(string ebayAccount, string itemId, int quantity);
 
@@ -40,5 +40,7 @@ namespace erpcore
         void SetUserPreferences(string ebayAccount, Dictionary<string, Object> preferences);
 
         void UpdateListingQuantities(string sku, int quantity);
+
+        void CompleteSale(int orderId);
     }
 }

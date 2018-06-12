@@ -9,8 +9,9 @@ using NLog;
 
 namespace erpcore
 {
-    public class EbayService
+    public class EbayService : IEbayService
     {
+        private string m_connectionString = null;
         private const string url = "https://api.ebay.com/ws/api.dll";
         private const string ebayNs = "{urn:ebay:apis:eBLBaseComponents}";
 
@@ -20,9 +21,10 @@ namespace erpcore
         private Dictionary<string, string> m_ebayTokenDictionary = new Dictionary<string, string>();
         private static Logger m_logger = NLog.LogManager.GetCurrentClassLogger();
 
-        public EbayService()
+        public EbayService(string connectionString)
         {
-            using (v3_allContext context = new v3_allContext())
+            m_connectionString = connectionString;
+            using (ERPContext context = new ERPContext(m_connectionString))
             {
                 var q = from ebayAccount in context.EbayAccount
                         select ebayAccount;
@@ -41,7 +43,7 @@ namespace erpcore
             Dictionary<string, EbayList> ebayListDictionary = new Dictionary<string, EbayList>();
             Dictionary<string, List<EbayListvariations>> ebayListVariationDictionary = new Dictionary<string, List<EbayListvariations>>();
 
-            using (v3_allContext context = new v3_allContext())
+            using (ERPContext context = new ERPContext(m_connectionString))
             {
                 var q = from ebayList in context.EbayList
                         where ebayList.EbayAccount == ebayAccount
@@ -150,7 +152,7 @@ namespace erpcore
             XElement output = MakeCall("GetItem", input);
         }
 
-        private void AddItem(v3_allContext context, XElement item)
+        private void AddItem(ERPContext context, XElement item)
         {
             EbayList listing = new EbayList();
             listing.ItemId = (string)item.Element(ebayNs + "ItemID"); ;
@@ -224,7 +226,7 @@ namespace erpcore
 
         public void ProcessGetOrdersResponse( XElement output)
         {
-            using (v3_allContext context = new v3_allContext())
+            using (ERPContext context = new ERPContext(m_connectionString))
             {
                 IEnumerable<XElement> orders = output.Descendants(ebayNs + "Order");
                 foreach (XElement orderElement in orders)
@@ -335,7 +337,7 @@ namespace erpcore
 
         public void ProcessAuctionCheckoutComplete(XElement element)
         {
-            using (v3_allContext context = new v3_allContext())
+            using (ERPContext context = new ERPContext(m_connectionString))
             {
                 XElement item = element.Element(ebayNs + "Item");
                 string accountName = item.Element(ebayNs + "Seller").Element(ebayNs + "UserID").Value;
@@ -460,7 +462,7 @@ namespace erpcore
 
         public void ProcessMessage(XElement element)
         {
-            using (v3_allContext context = new v3_allContext())
+            using (ERPContext context = new ERPContext(m_connectionString))
             {
                 EbayMessage message = new EbayMessage();
                 foreach (XElement messageElement in element.Descendants(ebayNs + "Message"))
@@ -535,7 +537,7 @@ namespace erpcore
         {
             XElement item = element.Element(ebayNs + "Item");
             string itemId = (string)item.Element(ebayNs + "ItemID");
-            using (v3_allContext context = new v3_allContext())
+            using (ERPContext context = new ERPContext(m_connectionString))
             {
                 var q = from ebayList in context.EbayList
                         where ebayList.ItemId == itemId
@@ -552,7 +554,7 @@ namespace erpcore
         {
             XElement item = element.Element(ebayNs + "Item");
             string itemId = (string)item.Element(ebayNs + "ItemID");
-            using (v3_allContext context = new v3_allContext())
+            using (ERPContext context = new ERPContext(m_connectionString))
             {
                 var q = from ebayList in context.EbayList
                         where ebayList.ItemId == itemId
@@ -775,7 +777,7 @@ namespace erpcore
             return ebayToken;
         }
 
-        private void UpdateListingQuantitiesInternal(v3_allContext context, string sku, int quantity)
+        private void UpdateListingQuantitiesInternal(ERPContext context, string sku, int quantity)
         {
             var q = from ebayList in context.EbayList
                     where ebayList.Sku == sku
@@ -783,11 +785,13 @@ namespace erpcore
                     select ebayList;
             if (q.Count() > 0)
             {
-                EbayList listing = q.First();
-                string location = listing.Location.ToUpper();
-                if (location.Contains("MASON") || location.Contains("KENTUCKY") || location.Contains("UNITED STATES") || location.Contains("WEST CHESTER") || location.Contains("MIDDLETOWN"))
+                foreach(EbayList listing in q)
                 {
-                    this.ReviseListingQuantity(listing.EbayAccount, listing.ItemId, quantity);
+                    string location = listing.Location.ToUpper();
+                    if (location.Contains("MASON") || location.Contains("KENTUCKY") || location.Contains("UNITED STATES") || location.Contains("WEST CHESTER") || location.Contains("MIDDLETOWN"))
+                    {
+                        this.ReviseListingQuantity(listing.EbayAccount, listing.ItemId, quantity);
+                    }
                 }
             }
             else
@@ -800,11 +804,13 @@ namespace erpcore
                                select ebayList;
                 if (variantQ.Count() > 0)
                 {
-                    EbayList listing = variantQ.First();
-                    string location = listing.Location.ToUpper();
-                    if (location.Contains("MASON") || location.Contains("KENTUCKY") || location.Contains("UNITED STATES") || location.Contains("WEST CHESTER") || location.Contains("MIDDLETOWN"))
+                    foreach(EbayList listing in variantQ)
                     {
-                        this.ReviseVariationQuantity(listing.EbayAccount, listing.ItemId, sku, quantity);
+                        string location = listing.Location.ToUpper();
+                        if (location.Contains("MASON") || location.Contains("KENTUCKY") || location.Contains("UNITED STATES") || location.Contains("WEST CHESTER") || location.Contains("MIDDLETOWN"))
+                        {
+                            this.ReviseVariationQuantity(listing.EbayAccount, listing.ItemId, sku, quantity);
+                        }
                     }
                 }
             }
@@ -812,7 +818,7 @@ namespace erpcore
 
         public void UpdateListingQuantities( string sku, int quantity )
         {
-            using (v3_allContext context = new v3_allContext())
+            using (ERPContext context = new ERPContext(m_connectionString))
             {
                 UpdateListingQuantitiesInternal(context, sku, quantity);
 
@@ -852,5 +858,93 @@ namespace erpcore
                 }
             }
         }
+
+        public void CompleteSale(int orderId)
+        {
+            using (ERPContext context = new ERPContext(m_connectionString))
+            {
+                bool success = true;
+                var q = from ebayOrder in context.EbayOrder
+                        from ebayOrderDetail in context.EbayOrderdetail
+                        where ebayOrder.EbayOrdersn == ebayOrderDetail.EbayOrdersn
+                        where ebayOrder.EbayId == orderId
+                        select new { ebayOrder, ebayOrderDetail};
+                if (q.Count() > 0)
+                {
+                    foreach (var row in q)
+                    {
+                        if (row.ebayOrder.EbayOrderid != null && row.ebayOrder.EbayOrderid.Length > 0)
+                        {
+                            XElement element = new XElement(ebayNs + "CompleteSaleRequest",
+                                new XElement(ebayNs + "ItemID", row.ebayOrderDetail.EbayItemid),
+                                new XElement(ebayNs + "TransactionID", row.ebayOrder.EbayTid),
+                                new XElement(ebayNs + "OrderID", row.ebayOrder.EbayOrderid),
+                                new XElement(ebayNs + "Paid", "true"),
+                                new XElement(ebayNs + "Shipped", "true")
+                                );
+                            if (row.ebayOrder.EbayTracknumber != null && row.ebayOrder.EbayCarrier != null && row.ebayOrder.EbayTracknumber.Length > 0 && row.ebayOrder.EbayCarrier.Length > 0)
+                            {
+                                element.Add(new XElement(ebayNs + "Shipment",
+                                                new XElement(ebayNs + "ShipmentTrackingDetails",
+                                                    new XElement(ebayNs + "ShipmentTrackingNumber", row.ebayOrder.EbayTracknumber),
+                                                    new XElement(ebayNs + "ShippingCarrierUsed", row.ebayOrder.EbayCarrier))));
+                            }
+
+                            AddCredentials(row.ebayOrder.EbayAccount, element);
+                            XElement output = MakeCall("CompleteSale", element);
+                            if (output == null)
+                            {
+                                success = false;
+                            }
+                        }
+                    }
+
+                    if(success)
+                    {
+                        EbayOrder order = q.First().ebayOrder;
+                        order.EbayMarkettime = DateUtils.ConvertToUnixTime(DateTime.Now).ToString();
+                        order.ShippedTime = order.EbayMarkettime;
+                        context.SaveChanges();
+                    }
+                }
+            }
+        }
+
+
+        public void ProcessPlatformNotification(string content)
+        {
+            XNamespace soapNs = "http://schemas.xmlsoap.org/soap/envelope/";
+            XElement root = XElement.Parse(content);
+            IEnumerable<XElement> elements = from el in root.Descendants(soapNs + "Body")
+                                             select el;
+            if (elements != null && elements.Count() == 1)
+            {
+                XElement element = elements.First();
+                IEnumerable<XElement> childElements = element.Elements();
+                if (childElements.Count() == 1)
+                {
+                    XElement childElement = childElements.First();
+                    string notificationEventName = (string)childElement.Element(ebayNs + "NotificationEventName");
+                    m_logger.Info("Processing " + notificationEventName + " event");
+                    if (notificationEventName == "AuctionCheckoutComplete")
+                    {
+                        ProcessAuctionCheckoutComplete(childElement);
+                    }
+                    else if (notificationEventName == "MyMessageseBayMessage" || notificationEventName == "MyMessagesM2MMessage")
+                    {
+                        ProcessMessage(childElement);
+                    }
+                    else if (notificationEventName == "ItemListed")
+                    {
+                        ProcessItemListed(childElement);
+                    }
+                    else if (notificationEventName == "ItemClosed")
+                    {
+                        ProcessItemClosed(childElement);
+                    }
+                }
+            }
+        }
+
     }
 }

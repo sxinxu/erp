@@ -8,24 +8,23 @@ namespace erpcoretests
 {
     public class EbayServiceTest
     {
+        private EbayService service = new EbayService("server=localhost;port=3306;user=root;password=EFDnpz8PeJ758VeN;database=v3-all");
+
         [Fact]
         public void TestGetMyEbaySelling()
         {
-            EbayService service = new EbayService();
             service.GetSellerList("notesonboard");
         }
 
         [Fact]
         public void TestEnabledNotificationTypes()
         {
-            EbayService service = new EbayService();
             service.GetEnabledNotificationTypes("notesonboard");
         }
 
         [Fact]
         public void TestSetNotificationPreferences()
         {
-            EbayService service = new EbayService();
             string[] eventTypes = { "ItemListed", "ItemClosed" };
             service.SetNotificationPreferences("notesonboard", true, eventTypes);
         }
@@ -33,28 +32,24 @@ namespace erpcoretests
         [Fact]
         public void TestGetOrder()
         {
-            EbayService service = new EbayService();
             service.GetOrder("notesonboard", "282668265143-1839681112018");
         }
 
         [Fact]
         public void TestGetItemWithVariation()
         {
-            EbayService service = new EbayService();
             service.GetItem("mei_ebuy", "292344652997");
         }
 
         [Fact]
         public void TestReviseVariationQuantity()
         {
-            EbayService service = new EbayService();
             service.ReviseVariationQuantity("mei_ebuy", "292344652997", "04ODA0003ABK", 0);
         }
 
         [Fact]
         public void TestGetUserPreferences()
         {
-            EbayService service = new EbayService();
             List<string> preferenceNames = new List<string>();
             preferenceNames.Add("ShowOutOfStockControlPreference");
             Dictionary<string, object> preferences = service.GetUserPreferences("mei_ebuy", preferenceNames);

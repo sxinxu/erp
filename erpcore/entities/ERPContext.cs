@@ -4,7 +4,7 @@ using Microsoft.EntityFrameworkCore.Metadata;
 
 namespace erpcore.entities
 {
-    public partial class v3_allContext : DbContext
+    public partial class ERPContext : DbContext
     {
         public virtual DbSet<EbayAccount> EbayAccount { get; set; }
         public virtual DbSet<EbayBarcode> EbayBarcode { get; set; }
@@ -134,6 +134,8 @@ namespace erpcore.entities
         public virtual DbSet<WuliuYfhFqb> WuliuYfhFqb { get; set; }
         public virtual DbSet<WuliuYyb> WuliuYyb { get; set; }
         public virtual DbSet<WuliuZyxbFqyfb> WuliuZyxbFqyfb { get; set; }
+        public virtual DbSet<AmazonList> AmazonList { get; set; }
+        public virtual DbSet<AmazonAccount> AmazonAccount { get; set; }
 
         // Unable to generate entity type for table 'ebay_goods2'. Please see the warning messages.
         // Unable to generate entity type for table 'ebay_pandiandetail'. Please see the warning messages.
@@ -145,13 +147,18 @@ namespace erpcore.entities
         // Unable to generate entity type for table 'wuliu_ck1_zx'. Please see the warning messages.
         // Unable to generate entity type for table 'wuliu_fedexzy'. Please see the warning messages.
         // Unable to generate entity type for table 'wuliu_yfh_yfb'. Please see the warning messages.
-
+        private readonly string connectionString;
+        public ERPContext(string connectionString):base()
+        {
+            this.connectionString = connectionString;
+        }
         protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
         {
             if (!optionsBuilder.IsConfigured)
             {
 #warning To protect potentially sensitive information in your connection string, you should move it out of source code. See http://go.microsoft.com/fwlink/?LinkId=723263 for guidance on storing connection strings.
-                optionsBuilder.UseMySql("server=localhost;port=3306;user=root;password=EFDnpz8PeJ758VeN;database=v3-all");
+                //optionsBuilder.UseMySql("server=localhost;port=3306;user=root;password=EFDnpz8PeJ758VeN;database=v3-all");
+                optionsBuilder.UseMySql(connectionString);
             }
         }
 
@@ -7680,6 +7687,67 @@ namespace erpcore.entities
                     .HasDefaultValueSql("'0.00'");
 
                 entity.Property(e => e.物流公司).HasMaxLength(12);
+            });
+
+            modelBuilder.Entity<AmazonList>(entity =>
+            {
+                entity.HasKey(e => e.Id);
+
+                entity.ToTable("amazon_list");
+
+                entity.HasIndex(e => new { e.AccountName, e.SKU })
+                    .HasName("account_sku");
+
+                entity.Property(e => e.Id)
+                    .HasColumnName("id")
+                    .HasColumnType("int(11)");
+
+                entity.Property(e => e.AccountName)
+                    .HasColumnName("accountName")
+                    .HasMaxLength(45);
+
+                entity.Property(e => e.SKU)
+                    .HasColumnName("sku")
+                    .HasMaxLength(45);
+
+                entity.Property(e => e.Quantity)
+                    .HasColumnName("quantity")
+                    .HasColumnType("int(11)");
+
+                entity.Property(e => e.Price)
+                    .HasColumnName("price")
+                    .HasColumnType("decimal(10,2)")
+                    .HasDefaultValueSql("'0.00'");
+
+                entity.Property(e => e.ASIN)
+                    .HasColumnName("asin")
+                    .HasMaxLength(15);
+            });
+
+            modelBuilder.Entity<AmazonAccount>(entity =>
+            {
+                entity.HasKey(e => e.Id);
+
+                entity.ToTable("amazon_account");
+
+                entity.HasIndex(e => e.AccountName)
+                    .HasName("accountName");
+
+                entity.Property(e => e.Id)
+                    .HasColumnName("id")
+                    .HasColumnType("int(11)");
+
+                entity.Property(e => e.AccountName)
+                    .HasColumnName("accountName")
+                    .HasMaxLength(15);
+
+                entity.Property(e => e.SellerId)
+                    .HasColumnName("sellerId")
+                    .HasMaxLength(15);
+
+                entity.Property(e => e.MWSAuthToken)
+                    .HasColumnName("mwsAuthToken")
+                    .HasMaxLength(45);
             });
         }
     }

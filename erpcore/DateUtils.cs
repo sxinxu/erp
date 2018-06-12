@@ -20,5 +20,11 @@ namespace erpcore
             }
             return t;
         }
+
+        public static DateTime ConvertUnixTimeToDateTime( int unixTime)
+        {
+            DateTime earliestTime = new DateTime(1970, 1, 1, 0, 0, 0, 0);
+            return earliestTime.AddSeconds(unixTime);
+        }
     }
 }

@@ -1004,7 +1004,8 @@ namespace MarketplaceWebService
             if ("2".Equals(signatureVersion))
             {
                 String signatureMethod = config.SignatureMethod;
-                algorithm = KeyedHashAlgorithm.Create(signatureMethod.ToUpper());
+                //algorithm = KeyedHashAlgorithm.Create(signatureMethod.ToUpper());
+                algorithm = (KeyedHashAlgorithm)CryptoConfig.CreateFromName(signatureMethod.ToUpper());
                 parameters.Add("SignatureMethod", signatureMethod);
                 stringToSign = CalculateStringToSignV2(parameters);
             }
