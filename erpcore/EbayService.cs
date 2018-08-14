@@ -11,182 +11,347 @@ namespace erpcore
 {
     public class EbayService : IEbayService
     {
+        private IPlatformServiceFactory m_platformServiceFactory;
+        private string m_company;
         private string m_connectionString = null;
+        private int[] m_storeIds = null;
         private const string url = "https://api.ebay.com/ws/api.dll";
         private const string ebayNs = "{urn:ebay:apis:eBLBaseComponents}";
 
+        /*
         private const string devId = "8dc6ba1f-5567-41d5-9bd1-63b69431ae11";
         private const string appId = "XinXu6b4b-d44f-493b-8a83-7fd2be893ea";
         private const string certId = "60f3aa83-8c15-4a31-ad3f-986cd05324e9";
+        */
+        private const string devId = "57b6d257-5a51-4aef-b081-8e3563cf989c";
+        private const string appId = "XinXu59fa-2456-4989-8556-07c34764a70";
+        private const string certId = "deb04ec3-d57f-4f2e-ad82-90523d62caec";
         private Dictionary<string, string> m_ebayTokenDictionary = new Dictionary<string, string>();
         private static Logger m_logger = NLog.LogManager.GetCurrentClassLogger();
 
-        public EbayService(string connectionString)
+        public EbayService(PlatformServiceFactory platformServiceFactory, string company, string connectionString, int[] storeIds)
         {
+            m_platformServiceFactory = platformServiceFactory;
+            m_company = company;
             m_connectionString = connectionString;
+            m_storeIds = storeIds;
             using (ERPContext context = new ERPContext(m_connectionString))
             {
                 var q = from ebayAccount in context.EbayAccount
+                        where ebayAccount.EbayToken5 != null
                         select ebayAccount;
                 foreach(var row in q)
                 {
-                    m_ebayTokenDictionary[row.EbayAccount1] = row.EbayToken;
+                    m_ebayTokenDictionary[row.EbayAccount1] = row.EbayToken5;
                 }
             }
         }
-
-        public void GetSellerList( string ebayAccount )
+        
+        public List<string> GetAccountNames()
         {
-            
+            List<string> accountNames = new List<string>();
+            accountNames.AddRange(m_ebayTokenDictionary.Keys);
+            return accountNames;
+        }
+
+        public void RefreshListings(ERPContext context)
+        {
+            foreach( string ebayAcocuntName in m_ebayTokenDictionary.Keys)
+            {
+                RefreshListings(context, ebayAcocuntName);
+            }
+
+            // Delete remaining ebayList
+            List<string> ebayAccountNames = m_ebayTokenDictionary.Keys.ToList();
+            var q = from ebayList in context.EbayList
+                    where ! ebayAccountNames.Contains(ebayList.EbayAccount)
+                    select ebayList;
+            foreach(var row in q)
+            {
+                context.EbayList.Remove(row);
+            }
+            var q1 = from ebayListVariation in context.EbayListvariations
+                    where !ebayAccountNames.Contains(ebayListVariation.EbayAccount)
+                    select ebayListVariation;
+            foreach (var row in q1)
+            {
+                context.EbayListvariations.Remove(row);
+            }
+            context.SaveChanges();
+        }
+
+        public void RefreshListings( ERPContext context, string ebayAccount )
+        {
+            m_logger.Info("Start to Refresh listings of " + ebayAccount);
             DateTime startTimeTo = DateTime.Now;
             DateTime startTimeFrom = DateTime.Now.AddDays(-120);
             Dictionary<string, EbayList> ebayListDictionary = new Dictionary<string, EbayList>();
-            Dictionary<string, List<EbayListvariations>> ebayListVariationDictionary = new Dictionary<string, List<EbayListvariations>>();
-
-            using (ERPContext context = new ERPContext(m_connectionString))
+            Dictionary<string, Dictionary<string, EbayListvariations>> ebayListVariationDictionary = new Dictionary<string, Dictionary<string, EbayListvariations>>();
+            
+            var q = from ebayList in context.EbayList
+                    where ebayList.EbayAccount == ebayAccount
+                    select ebayList;
+            foreach (var listing in q)
             {
-                var q = from ebayList in context.EbayList
-                        where ebayList.EbayAccount == ebayAccount
-                        select ebayList;
-                foreach (var listing in q)
+                if(ebayListDictionary.ContainsKey(listing.ItemId))
+                {
+                    context.EbayList.Remove(listing);
+                }
+                else
                 {
                     ebayListDictionary[listing.ItemId] = listing;
                 }
+            }
 
-                var q1 = from ebayListVariations in context.EbayListvariations
-                         where ebayListVariations.EbayAccount == ebayAccount
-                         select ebayListVariations;
-                foreach (var ebayListVariation in q1)
+            var q1 = from ebayListVariations in context.EbayListvariations
+                        where ebayListVariations.EbayAccount == ebayAccount
+                        select ebayListVariations;
+            foreach (var ebayListVariation in q1)
+            {
+                Dictionary<string, EbayListvariations> listVariations = null;
+                if (ebayListVariationDictionary.ContainsKey(ebayListVariation.Itemid))
                 {
-                    List<EbayListvariations> listVariations = null;
-                    if (ebayListVariationDictionary.ContainsKey(ebayListVariation.Itemid))
-                    {
-                        listVariations = ebayListVariationDictionary[ebayListVariation.Itemid];
-                    }
-                    else
-                    {
-                        listVariations = new List<EbayListvariations>();
-                    }
-                    listVariations.Add(ebayListVariation);
+                    listVariations = ebayListVariationDictionary[ebayListVariation.Itemid];
                 }
-
-                for (int i = 0; i < 6; i++)
+                else
                 {
-                    int currentPage = 0;
-                    string startTimeToString = startTimeTo.ToUniversalTime().ToString("yyyy-MM-ddTHH:mm:ssZ");
-                    string startTimeFromString = startTimeFrom.ToUniversalTime().ToString("yyyy-MM-ddTHH:mm:ssZ");
-                    while (true)
+                    listVariations = new Dictionary<string, EbayListvariations>();
+                    ebayListVariationDictionary[ebayListVariation.Itemid] = listVariations;
+                }
+                if( listVariations.ContainsKey(ebayListVariation.Sku))
+                {
+                    context.EbayListvariations.Remove(ebayListVariation);
+                }
+                else
+                {
+                    listVariations[ebayListVariation.Sku] = ebayListVariation;
+                }
+            }
+
+            for (int i = 0; i < 6; i++)
+            {
+                int currentPage = 0;
+                string startTimeToString = startTimeTo.ToUniversalTime().ToString("yyyy-MM-ddTHH:mm:ssZ");
+                string startTimeFromString = startTimeFrom.ToUniversalTime().ToString("yyyy-MM-ddTHH:mm:ssZ");
+                while (true)
+                {
+                    XElement input = new XElement(ebayNs + "GetSellerListRequest",
+                    new XElement(ebayNs + "StartTimeFrom", startTimeFromString),
+                    new XElement(ebayNs + "StartTimeTo", startTimeToString),
+                    new XElement(ebayNs + "DetailLevel", "ItemReturnDescription"),
+                    new XElement(ebayNs + "IncludeVariations", true),
+                    new XElement(ebayNs + "OutputSelector", "PaginationResult"),
+                    new XElement(ebayNs + "OutputSelector", "PageNumber"),
+                    new XElement(ebayNs + "OutputSelector", "ItemID"),
+                    new XElement(ebayNs + "OutputSelector", "SKU"),
+                    new XElement(ebayNs + "OutputSelector", "Title"),
+                    new XElement(ebayNs + "OutputSelector", "ListingType"),
+                    new XElement(ebayNs + "OutputSelector", "TimeLeft"),
+                    new XElement(ebayNs + "OutputSelector", "Quantity"),
+                    new XElement(ebayNs + "OutputSelector", "QuantitySold"),
+                    new XElement(ebayNs + "OutputSelector", "GalleryURL"),
+                    new XElement(ebayNs + "OutputSelector", "PictureDetails"),
+                    new XElement(ebayNs + "OutputSelector", "Location"),
+                    new XElement(ebayNs + "OutputSelector", "ViewItemURL"),
+                    new XElement(ebayNs + "OutputSelector", "PayPalEmailAddress"),
+                    new XElement(ebayNs + "OutputSelector", "SellingStatus"),
+                    new XElement(ebayNs + "OutputSelector", "HitCount"),
+                    new XElement(ebayNs + "OutputSelector", "BuyItNowPrice"),
+                    new XElement(ebayNs + "OutputSelector", "StartPrice"),
+                    new XElement(ebayNs + "OutputSelector", "Site"),
+                    new XElement(ebayNs + "Pagination",
+                        new XElement(ebayNs + "EntriesPerPage", 100)));
+                    AddCredentials(ebayAccount, input);
+                    if (currentPage > 0)
                     {
-                        XElement input = new XElement(ebayNs + "GetSellerListRequest",
-                        new XElement(ebayNs + "StartTimeFrom", startTimeFromString),
-                        new XElement(ebayNs + "StartTimeTo", startTimeToString),
-                        new XElement(ebayNs + "DetailLevel", "ItemReturnDescription"),
-                        new XElement(ebayNs + "IncludeVariations"),
-                        new XElement(ebayNs + "OutputSelector", "PaginationResult"),
-                        new XElement(ebayNs + "OutputSelector", "PageNumber"),
-                        new XElement(ebayNs + "OutputSelector", "ItemID"),
-                        new XElement(ebayNs + "OutputSelector", "SKU"),
-                        new XElement(ebayNs + "OutputSelector", "Title"),
-                        new XElement(ebayNs + "OutputSelector", "ListingType"),
-                        new XElement(ebayNs + "OutputSelector", "TimeLeft"),
-                        new XElement(ebayNs + "OutputSelector", "Quantity"),
-                        new XElement(ebayNs + "OutputSelector", "GalleryURL"),
-                        new XElement(ebayNs + "OutputSelector", "Location"),
-                        new XElement(ebayNs + "OutputSelector", "ViewItemURL"),
-                        new XElement(ebayNs + "OutputSelector", "PayPalEmailAddress"),
-                        new XElement(ebayNs + "Pagination",
-                            new XElement(ebayNs + "EntriesPerPage", 100)));
-                        AddCredentials(ebayAccount, input);
-                        if (currentPage > 0)
-                        {
-                            input.Element(ebayNs + "Pagination").Add(new XElement(ebayNs + "PageNumber", currentPage));
-                        }
-                        XElement output = MakeCall("GetSellerList", input);
+                        input.Element(ebayNs + "Pagination").Add(new XElement(ebayNs + "PageNumber", currentPage));
+                    }
+                    XElement output = MakeCall("GetSellerList", input);
 
-                        int totalPages = (int)output.Element(ebayNs + "PaginationResult").Element(ebayNs + "TotalNumberOfPages");
+                    int totalPages = (int)output.Element(ebayNs + "PaginationResult").Element(ebayNs + "TotalNumberOfPages");
 
-                        IEnumerable<XElement> items = output.Descendants(ebayNs + "Item");
-                        foreach (XElement item in items)
+                    IEnumerable<XElement> items = output.Descendants(ebayNs + "Item");
+                    foreach (XElement item in items)
+                    {
+                        string itemId = (string)item.Element(ebayNs + "ItemID");
+                        string listingType = (string)item.Element(ebayNs + "ListingType");
+                        string listingStatus = (string)item.Element(ebayNs + "SellingStatus").Element(ebayNs + "ListingStatus");
+                        if (listingType == "FixedPriceItem" && (listingStatus == "Active" || listingStatus == "Completed"))
                         {
-                            string itemId = (string)item.Element(ebayNs + "ItemID");
                             if (ebayListDictionary.ContainsKey(itemId))
                             {
+                                EbayList ebayList = ebayListDictionary[itemId];
+                                Dictionary<string, EbayListvariations> listVariations = null;
+                                if (ebayListVariationDictionary.ContainsKey(itemId))
+                                {
+                                    listVariations = ebayListVariationDictionary[itemId];
+                                }
+                                AddOrUpdateItem(context, item, ebayAccount, ebayList, listVariations);
                                 ebayListDictionary.Remove(itemId);
                                 ebayListVariationDictionary.Remove(itemId);
                             }
                             else
                             {
-                                AddItem(context, item);
+                                AddOrUpdateItem(context, item, ebayAccount, null, null);
+                                IEnumerable<XElement> variations = item.Descendants(ebayNs + "Variation");
+                                foreach (XElement variation in variations)
+                                {
+                                    AddVariation(context, ebayAccount, itemId, variation);
+                                }
                             }
                         }
-                        currentPage = (int)output.Element(ebayNs + "PageNumber");
-
-                        if (currentPage >= totalPages)
-                        {
-                            break;
-                        }
-                        currentPage++;
                     }
-                    startTimeTo = startTimeFrom;
-                    startTimeFrom = startTimeTo.AddDays(-120);
-                }
+                    currentPage = (int)output.Element(ebayNs + "PageNumber");
 
-                foreach (string itemId in ebayListDictionary.Keys)
-                {
-                    context.EbayList.Remove(ebayListDictionary[itemId]);
-                    foreach (var row in ebayListVariationDictionary[itemId])
+                    if (currentPage >= totalPages)
                     {
-                        context.EbayListvariations.Remove(row);
+                        break;
                     }
+                    currentPage++;
                 }
-
-                context.SaveChanges();
+                startTimeTo = startTimeFrom;
+                startTimeFrom = startTimeTo.AddDays(-120);
             }
-        }
 
-        public void GetItem(string ebayAccount, string itemId)
-        {
-            XElement input = new XElement(ebayNs + "GetItemRequest",
-                new XElement(ebayNs+"ItemID", itemId));
-            AddCredentials(ebayAccount, input);
-            XElement output = MakeCall("GetItem", input);
-        }
+            foreach (KeyValuePair < string, EbayList> pair in ebayListDictionary)
+            {
+                context.EbayList.Remove(pair.Value);
+            }
 
-        private void AddItem(ERPContext context, XElement item)
+            foreach(KeyValuePair<string, Dictionary<string, EbayListvariations>> pair in ebayListVariationDictionary)
+            {
+                foreach(KeyValuePair<string, EbayListvariations> pair1 in pair.Value)
+                {
+                    context.EbayListvariations.Remove(pair1.Value);
+                }
+            }
+
+            context.SaveChanges();
+
+            m_logger.Info("Complete Refresh listings of " + ebayAccount);
+        }
+        
+        private EbayList AddOrUpdateItem(ERPContext context, XElement item, string ebayAccount, EbayList ebayList, Dictionary<string, EbayListvariations> ebayListVariations)
         {
-            EbayList listing = new EbayList();
+            EbayList listing = null;
+            if( ebayList ==  null )
+            {
+                listing = new EbayList();
+                context.EbayList.Add(listing);
+            }
+            else
+            {
+                listing = ebayList;
+            }
             listing.ItemId = (string)item.Element(ebayNs + "ItemID"); ;
             listing.Sku = (string)item.Element(ebayNs + "SKU");
             listing.Title = (string)item.Element(ebayNs + "Title");
             listing.ListingType = (string)item.Element(ebayNs + "ListingType");
             listing.TimeLeft = (string)item.Element(ebayNs + "TimeLeft");
             listing.Quantity = (string)item.Element(ebayNs + "Quantity");
-            listing.GalleryUrl = (string)item.Element(ebayNs + "PictureDetails").Element(ebayNs + "GalleryURL");
+            int quantity = 0;
+            bool success = int.TryParse(listing.Quantity, out quantity);
+            if( !success )
+            {
+                m_logger.Error("Invalid quantity " + listing.Quantity + " for item " + listing.ItemId);
+            }
+            XElement sellingStatusElement = item.Element(ebayNs + "SellingStatus");
+            listing.QuantitySold = (int)sellingStatusElement.Element(ebayNs + "QuantitySold");
+            listing.QuantityAvailable = quantity - listing.QuantitySold;
+            listing.Site = (string)sellingStatusElement.Element(ebayNs + "Site");
+            listing.StartPrice = (string)item.Element(ebayNs + "StartPrice");
+            listing.StartPricecurrencyId = (string)item.Element(ebayNs + "StartPrice").Attribute("currencyID");
+            XElement pictureDetailsElement = item.Element(ebayNs + "PictureDetails");
+            listing.GalleryUrl = (string)pictureDetailsElement.Element(ebayNs + "GalleryURL");
+            List<XElement> pictureURLs = pictureDetailsElement.Elements(ebayNs + "PictureURL").ToList();
+            if( pictureURLs.Count > 0)
+            {
+                listing.PictureUrl01 = (string)pictureURLs[0];
+            }
+            if (pictureURLs.Count > 1)
+            {
+                listing.PictureUrl02 = (string)pictureURLs[1];
+            }
+            if (pictureURLs.Count > 2)
+            {
+                listing.PictureUrl03 = (string)pictureURLs[2];
+            }
+            if (pictureURLs.Count > 3)
+            {
+                listing.PictureUrl04 = (string)pictureURLs[3];
+            }
+
             listing.Location = (string)item.Element(ebayNs + "Location");
             listing.ViewItemUrl = (string)item.Element(ebayNs + "ListingDetails").Element(ebayNs + "ViewItemURL");
-            listing.EbayAccount = (string)item.Element(ebayNs + "Seller").Element(ebayNs + "UserID");
+            listing.EbayAccount = ebayAccount;
             listing.EbayUser = "vipadmin";
             listing.PayPalEmailAddress = (string)item.Element(ebayNs + "PayPalEmailAddress");
             listing.Active = true;
-            context.EbayList.Add(listing);
+            listing.GalleryType = (string)item.Element(ebayNs + "PictureDetails").Element(ebayNs + "GalleryType");
+            listing.BidCount = (string)sellingStatusElement.Element(ebayNs + "BidCount");
+            listing.HitCount = (string)item.Element(ebayNs + "HitCount");
+            listing.BuyItNowPrice = (string)item.Element(ebayNs + "BuyItNowPrice");
+            
 
             IEnumerable<XElement> variations = item.Descendants(ebayNs + "Variation");
             if (variations != null && variations.Count() > 0)
             {
                 foreach( XElement variation in variations)
                 {
-                    EbayListvariations listVariation = new EbayListvariations();
-                    listVariation.Sku = (string)variation.Element(ebayNs + "SKU");
+                    string sku = (string)variation.Element(ebayNs + "SKU");
+                    EbayListvariations listVariation = null;
+                    if ( ebayListVariations != null && ebayListVariations.ContainsKey(sku))
+                    {
+                        listVariation = ebayListVariations[sku];
+                        ebayListVariations.Remove(sku);
+                    }
+                    else
+                    {
+                        listVariation = new EbayListvariations();
+                        context.EbayListvariations.Add(listVariation);
+                    }
+                    listVariation.Sku = sku;
                     listVariation.Quantity = (string)variation.Element(ebayNs + "Quantity");
+                    quantity = 0;
+                    success = int.TryParse(listVariation.Quantity, out quantity);
+                    if (!success)
+                    {
+                        m_logger.Error("Invalid quantity " + listVariation.Quantity + " for item " + listing.ItemId+", SKU "+listVariation.Sku);
+                    }
+                    listVariation.QuantitySold = (int)variation.Element(ebayNs + "SellingStatus").Element(ebayNs + "QuantitySold");
+                    listVariation.QuantityAvailable = quantity - listVariation.QuantitySold;
                     listVariation.Itemid = listing.ItemId;
                     listVariation.EbayAccount = listing.EbayAccount;
                     listVariation.EbayUser = "vipadmin";
-                    context.EbayListvariations.Add(listVariation);
+                }
+
+                if(ebayListVariations != null)
+                {
+                    foreach (KeyValuePair<string, EbayListvariations> pair in ebayListVariations)
+                    {
+                        context.EbayListvariations.Remove(pair.Value);
+                    }
                 }
             }
+
+            return listing;
         }
 
-        public void ReviseListingQuantity( string ebayAccount, string itemId, int quantity)
+        private void AddVariation(ERPContext context, string ebayAccount, string itemId, XElement variation)
+        {
+            EbayListvariations listVariation = new EbayListvariations();
+            listVariation.Sku = (string)variation.Element(ebayNs + "SKU");
+            listVariation.Itemid = itemId;
+            listVariation.Quantity = (string)variation.Element(ebayNs + "Quantity");
+            listVariation.QuantitySold = (int)variation.Element(ebayNs + "QuantitySold");
+            listVariation.QuantityAvailable = (int)variation.Element(ebayNs + "QuantityAvailable");
+            listVariation.StartPrice = (string)variation.Element(ebayNs + "StartPrice");
+            listVariation.EbayAccount = ebayAccount;
+            listVariation.VariationSpecifics = "";
+            context.EbayListvariations.Add(listVariation);
+        }
+
+        public void ReviseListingQuantity( string ebayAccount, string itemId, string sku, int quantity)
         {
             XElement input = new XElement(ebayNs + "ReviseFixedPriceItemRequest");
             XElement itemElement = new XElement(ebayNs + "Item",
@@ -195,7 +360,9 @@ namespace erpcore
             input.Add(itemElement);
             AddCredentials(ebayAccount, input);
             
-            MakeCall("ReviseFixedPriceItem", input);
+            //MakeCall("ReviseFixedPriceItem", input);
+
+            m_logger.Info("EbayAccount: "+ebayAccount+", SKU: "+sku+", ItemId: "+itemId+", The quantity of item has been revised to " + quantity);
         }
 
         public void ReviseVariationQuantity(string ebayAccount, string itemId, string sku, int quantity)
@@ -211,132 +378,255 @@ namespace erpcore
             input.Add(itemElement);
             AddCredentials(ebayAccount, input);
 
-            MakeCall("ReviseFixedPriceItem", input);
+            //MakeCall("ReviseFixedPriceItem", input);
+            m_logger.Info("EbayAccount: " + ebayAccount + ", SKU: " + sku + ", ItemId: " + itemId + ", The quantity of variant item has been revised to " + quantity);
         }
 
-        public void GetOrder(string ebayAccount, string orderId)
+        public void SyncOrders( ERPContext context, string accountName, DateTime createdTimeFrom, DateTime createdTimeTo, List<EbayOrderdetail> orderDetails  )
+        {
+            if (!m_ebayTokenDictionary.ContainsKey(accountName))
+            {
+                m_logger.Error(accountName + " does not exist.");
+                return;
+            }
+            m_logger.Info("Sync orders of " + accountName);
+            string createdTimeFromString = createdTimeFrom.ToUniversalTime().ToString("yyyy-MM-ddTHH:mm:ssZ");
+            string createdTimeToString = createdTimeTo.ToUniversalTime().ToString("yyyy-MM-ddTHH:mm:ssZ");
+            int currentPage = 1;
+            int totalNumberOfPages = 1;
+            while (true)
+            {
+                XElement input = new XElement(ebayNs + "GetOrdersRequest",
+                                     new XElement(ebayNs + "DetailLevel", "ReturnAll"),
+                                     new XElement(ebayNs + "CreateTimeFrom", createdTimeFromString),
+                                     new XElement(ebayNs + "CreateTimeTo", createdTimeToString),
+                                     new XElement(ebayNs + "IncludeFinalValueFee", true),
+                                     new XElement(ebayNs + "OrderRole", "Seller"),
+                                     new XElement(ebayNs + "OrderStatus", "Completed"),
+                                     new XElement(ebayNs + "Pagination",
+                                        new XElement(ebayNs + "PageNumber", currentPage)),
+                                    new XElement(ebayNs + "OutputSelector", "PaginationResult"),
+                                    new XElement(ebayNs + "OutputSelector", "CreatedTime"),
+                                    new XElement(ebayNs + "OutputSelector", "CheckoutStatus"),
+                                    new XElement(ebayNs + "OutputSelector", "OrderID"),
+                                    new XElement(ebayNs + "OutputSelector", "ExternalTransactionID"),
+                                    new XElement(ebayNs + "OutputSelector", "PaidTime"),
+                                    new XElement(ebayNs + "OutputSelector", "BuyerUserID"),
+                                    new XElement(ebayNs + "OutputSelector", "ShippingAddress"),
+                                    new XElement(ebayNs + "OutputSelector", "AmountPaid"),
+                                    new XElement(ebayNs + "OutputSelector", "Total"),
+                                    new XElement(ebayNs + "OutputSelector", "ShippingServiceSelected"),
+                                    new XElement(ebayNs + "OutputSelector", "SellingManagerSalesRecordNumber"),
+                                    new XElement(ebayNs + "OutputSelector", "BuyerCheckoutMessage"),
+                                    new XElement(ebayNs + "OutputSelector", "SellingStatus"),
+                                    new XElement(ebayNs + "OutputSelector", "ExternalTransaction"),
+                                    new XElement(ebayNs + "OutputSelector", "TransactionPrice"),
+                                    new XElement(ebayNs + "OutputSelector", "QuantityPurchased"),
+                                    new XElement(ebayNs + "OutputSelector", "CreatedDate"),
+                                    new XElement(ebayNs + "OutputSelector", "Variation"),
+                                    new XElement(ebayNs + "OutputSelector", "Item"),
+                                    new XElement(ebayNs + "OutputSelector", "ActualShippingCost"),
+                                    new XElement(ebayNs + "OutputSelector", "FinalValueFee"),
+                                    new XElement(ebayNs + "OutputSelector", "FeeOrCreditAmount"),
+                                    new XElement(ebayNs + "OutputSelector", "OrderLineItemID"),
+                                    new XElement(ebayNs + "OutputSelector", "Item.ListingDetails"),
+                                    new XElement(ebayNs + "OutputSelector", "TransactionID"),
+                                    new XElement(ebayNs + "OutputSelector", "PayPalEmailAddress"),
+                                    new XElement(ebayNs + "OutputSelector", "ListingType"));
+                AddCredentials(accountName, input);
+                XElement output = MakeCall("GetOrders", input);
+                totalNumberOfPages = (int)output.Element(ebayNs + "PaginationResult").Element(ebayNs + "TotalNumberOfPages");
+                ProcessGetOrdersResponse(context, accountName, output, orderDetails);
+
+                if (currentPage >= totalNumberOfPages)
+                {
+                    break;
+                }
+                currentPage++;
+            }
+        }
+
+        public void GetOrder(ERPContext context, string accountName, string orderId, List<EbayOrderdetail> orderDetails)
         {
             XElement input = new XElement(ebayNs + "GetOrdersRequest",
                                 new XElement(ebayNs+"DetailLevel", "ReturnAll"),
                                 new XElement(ebayNs + "OrderIDArray",
                                     new XElement(ebayNs + "OrderID", orderId)));
-            AddCredentials(ebayAccount, input);
+            AddCredentials(accountName, input);
             XElement output = MakeCall("GetOrders", input);
+            ProcessGetOrdersResponse(context, accountName, output, orderDetails);
         }
 
-        public void ProcessGetOrdersResponse( XElement output)
+        private void ProcessGetOrdersResponse( ERPContext context, string accountName, XElement output, List<EbayOrderdetail> orderDetails)
         {
-            using (ERPContext context = new ERPContext(m_connectionString))
+            IEnumerable<XElement> orders = output.Descendants(ebayNs + "Order");
+            foreach (XElement orderElement in orders)
             {
-                IEnumerable<XElement> orders = output.Descendants(ebayNs + "Order");
-                foreach (XElement orderElement in orders)
+                string orderId = (string)orderElement.Element(ebayNs + "OrderID");
+                XElement firstTransactionElement = orderElement.Element(ebayNs + "TransactionArray").Element(ebayNs + "Transaction");
+                var query = from order in context.EbayOrder
+                            where order.EbayOrdersn == orderId
+                            select order;
+                if (query.Count() == 0)
                 {
-                    string orderId = (string)orderElement.Element(ebayNs + "OrderID");
-                    XElement firstTransactionElement = orderElement.Element(ebayNs + "TransactionArray").Element(ebayNs + "Transaction");
-                    var query = from order in context.EbayOrder
-                                where order.EbayOrdersn == orderId
-                                select order;
-                    if (query.Count() == 0)
+                    EbayOrder ebayOrder = new EbayOrder();
+                    ebayOrder.EbayPaystatus = (string)orderElement.Element(ebayNs + "CheckoutStatus").Element(ebayNs + "Status");
+                    ebayOrder.EBayPaymentStatus = (string)orderElement.Element(ebayNs + "CheckoutStatus").Element(ebayNs + "eBayPaymentStatus");
+                    ebayOrder.EbayOrdersn = orderId;
+                    XElement externalTransactionElement = orderElement.Element(ebayNs + "ExternalTransaction");
+                    if (externalTransactionElement != null)
                     {
-                        EbayOrder ebayOrder = new EbayOrder();
-                        ebayOrder.EbayPaystatus = (string)orderElement.Element(ebayNs + "CheckoutStatus").Element(ebayNs + "eBayPaymentStatus");
-                        ebayOrder.EbayOrdersn = orderId;
-                        XElement externalTransactionElement = orderElement.Element(ebayNs + "ExternalTransaction");
-                        if (externalTransactionElement != null)
-                        {
-                            ebayOrder.EbayPtid = (string)externalTransactionElement.Element(ebayNs + "ExternalTransactionID");
-                        }
-                        ebayOrder.EbayOrderid = orderId;
-                        string createdTime = (string)orderElement.Element(ebayNs + "CreatedTime");
-                        ebayOrder.EbayCreatedtime = DateUtils.ConvertToUnixTime(DateTime.Parse(createdTime));
-                        ebayOrder.EbayPaidtime = ebayOrder.EbayCreatedtime.ToString();
-                        ebayOrder.EbayAddtime = ebayOrder.EbayCreatedtime;
-                        XElement buyer = firstTransactionElement.Element(ebayNs + "Buyer");
-                        ebayOrder.EbayUserid = (string)orderElement.Element(ebayNs + "BuyerUserID");
+                        ebayOrder.EbayPtid = (string)externalTransactionElement.Element(ebayNs + "ExternalTransactionID");
+                    }
+                    ebayOrder.EbayOrderid = orderId;
+                    string createdTime = (string)orderElement.Element(ebayNs + "CreatedTime");
+                    ebayOrder.EbayCreatedtime = DateUtils.ConvertToUnixTime(DateTime.Parse(createdTime));
+                    string paidTime = (string)orderElement.Element(ebayNs + "PaidTime");
+                    ebayOrder.EbayPaidtime = DateUtils.ConvertToUnixTime(DateTime.Parse(createdTime)).ToString();
+                    ebayOrder.EbayAddtime = DateUtils.ConvertToUnixTime(DateTime.Now);
+                    XElement buyer = firstTransactionElement.Element(ebayNs + "Buyer");
+                    ebayOrder.EbayUserid = (string)orderElement.Element(ebayNs + "BuyerUserID");
 
-                        XElement shippingAddress = orderElement.Element(ebayNs + "ShippingAddress");
-                        ebayOrder.EbayUsername = (string)shippingAddress.Element(ebayNs + "Name");
-                        ebayOrder.EbayUsermail = (string)buyer.Element(ebayNs + "Email");
-                        ebayOrder.EbayStreet = (string)shippingAddress.Element(ebayNs + "Street1");
-                        ebayOrder.EbayStreet1 = (string)shippingAddress.Element(ebayNs + "Street2");
-                        ebayOrder.EbayCity = (string)shippingAddress.Element(ebayNs + "CityName");
-                        ebayOrder.EbayState = (string)shippingAddress.Element(ebayNs + "StateOrProvince");
-                        ebayOrder.EbayCouny = (string)shippingAddress.Element(ebayNs + "Country");
-                        ebayOrder.EbayCountryname = (string)shippingAddress.Element(ebayNs + "CountryName");
-                        if (ebayOrder.EbayCountryname == "US")
-                        {
-                            ebayOrder.EbayCountryname = "United States";
-                        }
-                        ebayOrder.EbayPostcode = (string)shippingAddress.Element(ebayNs + "PostalCode");
-                        ebayOrder.EbayPhone = (string)shippingAddress.Element(ebayNs + "Phone");
-                        ebayOrder.EbayCurrency = (string)orderElement.Element(ebayNs + "AmountPaid").Attribute(ebayNs + "currencyID");
-                        ebayOrder.EbayTotal = Convert.ToDouble((string)orderElement.Element(ebayNs + "Total"));
-                        ebayOrder.Status = "0";
-                        ebayOrder.EbayCarrier2 = "";
-                        ebayOrder.EbayTracknumber2 = "";
-                        ebayOrder.IsYichang = "0";
-                        ebayOrder.Ishide = 0;
-                        ebayOrder.EbayCombine = "0";
+                    XElement shippingAddress = orderElement.Element(ebayNs + "ShippingAddress");
+                    ebayOrder.EbayUsername = (string)shippingAddress.Element(ebayNs + "Name");
+                    ebayOrder.EbayUsermail = (string)buyer.Element(ebayNs + "Email");
+                    ebayOrder.EbayStreet = (string)shippingAddress.Element(ebayNs + "Street1");
+                    ebayOrder.EbayStreet1 = (string)shippingAddress.Element(ebayNs + "Street2");
+                    ebayOrder.EbayCity = (string)shippingAddress.Element(ebayNs + "CityName");
+                    ebayOrder.EbayState = (string)shippingAddress.Element(ebayNs + "StateOrProvince");
+                    ebayOrder.EbayCouny = (string)shippingAddress.Element(ebayNs + "Country");
+                    ebayOrder.EbayCountryname = (string)shippingAddress.Element(ebayNs + "CountryName");
+                    if (ebayOrder.EbayCountryname == "US")
+                    {
+                        ebayOrder.EbayCountryname = "United States";
+                    }
+                    ebayOrder.EbayPostcode = (string)shippingAddress.Element(ebayNs + "PostalCode");
+                    ebayOrder.EbayPhone = (string)shippingAddress.Element(ebayNs + "Phone");
+                    ebayOrder.EbayCurrency = (string)orderElement.Element(ebayNs + "AmountPaid").Attribute(ebayNs + "currencyID");
+                    ebayOrder.EbayTotal = Convert.ToDouble((string)orderElement.Element(ebayNs + "Total"));
+                    ebayOrder.Status = "0";
+                    ebayOrder.EbayCarrier2 = "";
+                    ebayOrder.EbayTracknumber2 = "";
+                    ebayOrder.IsYichang = "0";
+                    ebayOrder.Ishide = 0;
+                    ebayOrder.EbayCombine = "0";
+                    if(ebayOrder.EbayPaidtime != null )
+                    {
                         ebayOrder.EbayStatus = 1;
-                        ebayOrder.EbayUser = "vipadmin";
-                        ebayOrder.EbayAccount = (string)orderElement.Element(ebayNs + "SellerUserID");
-                        ebayOrder.EbayAccount2 = ebayOrder.EbayAccount;
-                        ebayOrder.Recordnumber = (string)orderElement.Element(ebayNs + "ShippingDetails").Element(ebayNs + "SellingManagerSalesRecordNumber");
-                        ebayOrder.EbayNote = (string)orderElement.Element(ebayNs + "BuyerCheckoutMessage");
-                        ebayOrder.EBayPaymentStatus = (string)orderElement.Element(ebayNs + "CheckoutStatus").Element(ebayNs + "eBayPaymentStatus");
-                        double feeOrCreditAmount = Convert.ToDouble((string)orderElement.Element(ebayNs+ "MonetaryDetails").Element(ebayNs + "Payments").Element(ebayNs + "Payment").Element(ebayNs + "FeeOrCreditAmount"));
+                    }
+                    else
+                    {
+                        ebayOrder.EbayStatus = 0;
+                    }
+                    ebayOrder.EbayUser = "vipadmin";
+                    ebayOrder.EbayShipfee = (string)orderElement.Element(ebayNs + "ShippingServiceSelected").Element(ebayNs + "ShippingServiceCost");
+                    ebayOrder.EbayAccount = accountName;
+                    ebayOrder.EbayAccount2 = accountName;
+                    ebayOrder.Recordnumber = (string)orderElement.Element(ebayNs + "ShippingDetails").Element(ebayNs + "SellingManagerSalesRecordNumber");
+                    ebayOrder.EbayNote = (string)orderElement.Element(ebayNs + "BuyerCheckoutMessage");
+                    double feeOrCreditAmount = Convert.ToDouble((string)orderElement.Element(ebayNs+ "MonetaryDetails").Element(ebayNs + "Payments").Element(ebayNs + "Payment").Element(ebayNs + "FeeOrCreditAmount"));
 
-                        context.EbayOrder.Add(ebayOrder);
+                    context.EbayOrder.Add(ebayOrder);
+                    m_logger.Info("Proccess ebay order " + ebayOrder.EbayUsername);
 
-                        IEnumerable<XElement> transactions = orderElement.Descendants(ebayNs + "Transaction");
-                        foreach (XElement transaction in transactions)
+                    IEnumerable<XElement> transactions = orderElement.Descendants(ebayNs + "Transaction");
+                    foreach (XElement transaction in transactions)
+                    {
+                        string recordNumber = (string)transaction.Element(ebayNs + "ShippingDetails").Element(ebayNs + "SellingManagerSalesRecordNumber");
+                        EbayOrderdetail ebayOrderdetail = ebayOrderdetail = new EbayOrderdetail();
+                        ebayOrderdetail.OrderLineItemId = (string)transaction.Element(ebayNs + "OrderLineItemID"); ;
+                        ebayOrderdetail.EbayOrdersn = orderId;
+                        ebayOrderdetail.Recordnumber = recordNumber;
+                        ebayOrderdetail.EbayItemprice = (string)transaction.Element(ebayNs + "TransactionPrice");
+                        ebayOrderdetail.EbayAmount = (string)transaction.Element(ebayNs + "QuantityPurchased");
+                        createdTime = (string)transaction.Element(ebayNs + "CreatedDate");
+                        ebayOrderdetail.EbayCreatedtime = DateUtils.ConvertToUnixTime(DateTime.Parse(createdTime));
+                        XElement shippingServiceSelectedElement = transaction.Element(ebayNs + "ShippingServiceSelected");
+                        if (shippingServiceSelectedElement != null)
                         {
-                            string recordNumber = (string)transaction.Element(ebayNs + "ShippingDetails").Element(ebayNs + "SellingManagerSalesRecordNumber");
-                            EbayOrderdetail ebayOrderdetail = ebayOrderdetail = new EbayOrderdetail();
-                            ebayOrderdetail.OrderLineItemId = (string)transaction.Element(ebayNs + "OrderLineItemID"); ;
-                            ebayOrderdetail.EbayOrdersn = orderId;
-                            ebayOrderdetail.Recordnumber = recordNumber;
-                            ebayOrderdetail.EbayItemprice = (string)transaction.Element(ebayNs + "TransactionPrice");
-                            ebayOrderdetail.EbayAmount = (string)transaction.Element(ebayNs + "QuantityPurchased");
-                            ebayOrderdetail.EbayCreatedtime = DateUtils.ConvertToUnixTime(DateTime.Now);
-                            XElement shippingServiceSelectedElement = transaction.Element(ebayNs + "ShippingServiceSelected");
-                            if (shippingServiceSelectedElement != null)
-                            {
-                                ebayOrderdetail.EbayShiptype = (string)shippingServiceSelectedElement.Element(ebayNs + "ShippingService");
-                            }
-                            ebayOrderdetail.EbayUser = "vipadmin";
-
-                            XElement item = transaction.Element(ebayNs + "Item");
-                            ebayOrderdetail.EbayItemid = (string)item.Element(ebayNs + "ItemID");
-                            ebayOrderdetail.EbayItemtitle = (string)item.Element(ebayNs + "Title");
-                            ebayOrderdetail.EbayItemurl = (string)item.Element(ebayNs + "ListingDetails").Element(ebayNs + "ViewItemURL");
-                            ebayOrderdetail.Sku = (string)item.Element(ebayNs + "SKU");
-                            if (ebayOrderdetail.Sku == null)
-                            {
-                                ebayOrderdetail.Sku = "";
-                            }
-                            ebayOrderdetail.Shipingfee = (string)transaction.Element(ebayNs + "ActualShippingCost");
-                            ebayOrderdetail.EbayAccount = ebayOrder.EbayAccount;
-                            ebayOrderdetail.Addtime = DateUtils.ConvertToUnixTime(DateTime.Now).ToString();
-                            ebayOrderdetail.EbayTid = (string)transaction.Element(ebayNs + "TransactionID");
-                            double transactionPrice = Convert.ToDouble((string)transaction.Element(ebayNs + "TransactionPrice"));
-                            double actualShippingCost = Convert.ToDouble((string)transaction.Element(ebayNs + "ActualShippingCost"));
-                            ebayOrderdetail.FeeOrCreditAmount = (feeOrCreditAmount*(transactionPrice+actualShippingCost)/ebayOrder.EbayTotal).ToString();
-                            ebayOrderdetail.FinalValueFee = float.Parse((string)transaction.Element(ebayNs + "FinalValueFee"));
-                            ebayOrderdetail.PayPalEmailAddress = (string)transaction.Element(ebayNs + "PayPalEmailAddress");
-                            ebayOrderdetail.ListingType = (string)item.Element(ebayNs + "ListingType");
-                            context.EbayOrderdetail.Add(ebayOrderdetail);
+                            ebayOrderdetail.EbayShiptype = (string)shippingServiceSelectedElement.Element(ebayNs + "ShippingService");
                         }
+                        ebayOrderdetail.EbayUser = "vipadmin";
+
+                        XElement item = transaction.Element(ebayNs + "Item");
+                        ebayOrderdetail.EbayItemid = (string)item.Element(ebayNs + "ItemID");
+                        EbayList listing = GetItem(context, ebayOrder.EbayAccount, ebayOrderdetail.EbayItemid);
+                        XElement variation = transaction.Element(ebayNs + "Variation");
+                        if (variation != null)
+                        {
+                            ebayOrderdetail.EbayItemtitle = (string)variation.Element(ebayNs + "VariationTitle");
+                            ebayOrderdetail.Sku = (string)variation.Element(ebayNs + "SKU");
+                        }
+                        else
+                        {
+                            ebayOrderdetail.EbayItemtitle = (string)item.Element(ebayNs + "Title");
+                            ebayOrderdetail.Sku = (string)item.Element(ebayNs + "SKU");
+                        }
+                        if(listing != null )
+                        {
+                            ebayOrderdetail.ListingType = listing.ListingType;
+                            ebayOrderdetail.PayPalEmailAddress = listing.PayPalEmailAddress;
+                            ebayOrderdetail.EbayItemurl = listing.GalleryUrl;
+                        }
+                        ebayOrderdetail.Shipingfee = (string)transaction.Element(ebayNs + "ActualShippingCost");
+                        ebayOrderdetail.EbayAccount = ebayOrder.EbayAccount;
+                        ebayOrderdetail.Addtime = DateUtils.ConvertToUnixTime(DateTime.Now).ToString();
+                        ebayOrderdetail.EbayTid = (string)transaction.Element(ebayNs + "TransactionID");
+                        double transactionPrice = Convert.ToDouble((string)transaction.Element(ebayNs + "TransactionPrice"));
+                        double actualShippingCost = Convert.ToDouble((string)transaction.Element(ebayNs + "ActualShippingCost"));
+                        ebayOrderdetail.FeeOrCreditAmount = (feeOrCreditAmount*(transactionPrice+actualShippingCost)/ebayOrder.EbayTotal).ToString();
+                        ebayOrderdetail.FinalValueFee = float.Parse((string)transaction.Element(ebayNs + "FinalValueFee"));
+                        context.EbayOrderdetail.Add(ebayOrderdetail);
+                        orderDetails.Add(ebayOrderdetail);
+                        m_logger.Info(ebayOrderdetail.Sku + "," + ebayOrderdetail.EbayAmount);
                     }
                 }
-
-                context.SaveChanges();
-
             }
+        }
+
+        private EbayList GetItem( ERPContext context, string accountName, string itemId )
+        {
+            EbayList listing = null;
+            var listingQuery = from ebayList in context.EbayList
+                               where ebayList.EbayAccount == accountName
+                               where ebayList.ItemId == itemId
+                               select ebayList;
+            if( listingQuery.Count() == 0 )
+            {
+                XElement input = new XElement(ebayNs + "GetItemRequest",
+                        new XElement(ebayNs+"ItemID", itemId),
+                    new XElement(ebayNs + "OutputSelector", "ItemID"),
+                    new XElement(ebayNs + "OutputSelector", "SKU"),
+                    new XElement(ebayNs + "OutputSelector", "Title"),
+                    new XElement(ebayNs + "OutputSelector", "ListingType"),
+                    new XElement(ebayNs + "OutputSelector", "TimeLeft"),
+                    new XElement(ebayNs + "OutputSelector", "Quantity"),
+                    new XElement(ebayNs + "OutputSelector", "GalleryURL"),
+                    new XElement(ebayNs + "OutputSelector", "PictureDetails"),
+                    new XElement(ebayNs + "OutputSelector", "Location"),
+                    new XElement(ebayNs + "OutputSelector", "ViewItemURL"),
+                    new XElement(ebayNs + "OutputSelector", "PayPalEmailAddress"),
+                    new XElement(ebayNs + "OutputSelector", "SellingStatus"),
+                    new XElement(ebayNs + "OutputSelector", "HitCount"),
+                    new XElement(ebayNs + "OutputSelector", "BuyItNowPrice"),
+                    new XElement(ebayNs + "OutputSelector", "StartPrice")
+                    );
+                AddCredentials(accountName, input);
+                XElement output = MakeCall("GetItem", input);
+                XElement itemElement = output.Element(ebayNs + "Item");
+                listing = AddOrUpdateItem(context, itemElement, accountName, null, null);
+            }
+            else
+            {
+                listing = listingQuery.First();
+            }
+
+            return listing;
         }
 
         public void ProcessAuctionCheckoutComplete(XElement element)
         {
+            List<EbayOrderdetail> orderDetails = new List<EbayOrderdetail>();
             using (ERPContext context = new ERPContext(m_connectionString))
             {
                 XElement item = element.Element(ebayNs + "Item");
@@ -350,7 +640,7 @@ namespace erpcore
                     // Handle multiple line item orders
                     if (orderId != orderLineItemId)
                     {
-                        GetOrder(accountName, orderId);
+                        GetOrder(context, accountName, orderId, orderDetails);
                     }
                     else
                     {
@@ -362,7 +652,8 @@ namespace erpcore
                         if (query.Count() == 0)
                         {
                             ebayOrder = new EbayOrder();
-                            ebayOrder.EbayPaystatus = (string)transaction.Element(ebayNs + "Status").Element(ebayNs + "eBayPaymentStatus");
+                            ebayOrder.EbayPaystatus = (string)transaction.Element(ebayNs + "Status").Element(ebayNs + "CompleteStatus");
+                            ebayOrder.EBayPaymentStatus = (string)transaction.Element(ebayNs + "Status").Element(ebayNs + "eBayPaymentStatus");
                             ebayOrder.EbayOrdersn = orderId;
                             XElement externalTransactionElement = transaction.Element(ebayNs + "ExternalTransaction");
                             if (externalTransactionElement != null)
@@ -370,9 +661,11 @@ namespace erpcore
                                 ebayOrder.EbayPtid = (string)externalTransactionElement.Element(ebayNs + "ExternalTransactionID");
                             }
                             ebayOrder.EbayOrderid = orderId;
-                            ebayOrder.EbayCreatedtime = DateUtils.ConvertToUnixTime(DateTime.Now);
-                            ebayOrder.EbayPaidtime = ebayOrder.EbayCreatedtime.ToString();
-                            ebayOrder.EbayAddtime = ebayOrder.EbayCreatedtime;
+                            string createdTime = (string)transaction.Element(ebayNs + "CreatedDate");
+                            ebayOrder.EbayCreatedtime = DateUtils.ConvertToUnixTime(DateTime.Parse(createdTime));
+                            string paidTime = (string)transaction.Element(ebayNs + "PaidTime");
+                            ebayOrder.EbayPaidtime = DateUtils.ConvertToUnixTime(DateTime.Parse(paidTime)).ToString();
+                            ebayOrder.EbayAddtime = DateUtils.ConvertToUnixTime(DateTime.Now);
                             XElement buyer = transaction.Element(ebayNs + "Buyer");
                             ebayOrder.EbayUserid = (string)buyer.Element(ebayNs + "UserID");
 
@@ -385,7 +678,7 @@ namespace erpcore
                             ebayOrder.EbayState = (string)shippingAddress.Element(ebayNs + "StateOrProvince");
                             ebayOrder.EbayCouny = (string)shippingAddress.Element(ebayNs + "Country");
                             ebayOrder.EbayCountryname = (string)shippingAddress.Element(ebayNs + "CountryName");
-                            if (ebayOrder.EbayCountryname == "US")
+                            if (ebayOrder.EbayCouny == "US")
                             {
                                 ebayOrder.EbayCountryname = "United States";
                             }
@@ -407,6 +700,7 @@ namespace erpcore
                             ebayOrder.EBayPaymentStatus = (string)transaction.Element(ebayNs + "Status").Element(ebayNs + "eBayPaymentStatus");
 
                             context.EbayOrder.Add(ebayOrder);
+                            m_logger.Info("Proccess ebay order " + ebayOrder.EbayUsername);
                         }
 
                         EbayOrderdetail ebayOrderdetail = null;
@@ -436,12 +730,22 @@ namespace erpcore
                         ebayOrderdetail.EbayUser = "vipadmin";
 
                         ebayOrderdetail.EbayItemid = (string)item.Element(ebayNs + "ItemID");
-                        ebayOrderdetail.EbayItemtitle = (string)item.Element(ebayNs + "Title");
-                        ebayOrderdetail.EbayItemurl = (string)item.Element(ebayNs + "ListingDetails").Element(ebayNs + "ViewItemURL");
-                        ebayOrderdetail.Sku = (string)item.Element(ebayNs + "SKU");
+                        XElement variationElement = transaction.Element(ebayNs + "Variation");
+                        if (variationElement != null)
+                        {
+                            ebayOrderdetail.Sku = (string)variationElement.Element(ebayNs + "SKU");
+                            ebayOrderdetail.EbayItemtitle = (string)variationElement.Element(ebayNs + "VariationTitle");
+                            ebayOrderdetail.EbayItemurl = (string)variationElement.Element(ebayNs + "VariationViewItemURL");
+                        }
+                        else
+                        {
+                            ebayOrderdetail.Sku = (string)item.Element(ebayNs + "SKU");
+                            ebayOrderdetail.EbayItemtitle = (string)item.Element(ebayNs + "Title");
+                            ebayOrderdetail.EbayItemurl = (string)item.Element(ebayNs + "ListingDetails").Element(ebayNs + "ViewItemURL");
+                        }
                         if (ebayOrderdetail.Sku == null)
                         {
-                            ebayOrderdetail.Sku = "";
+                            continue;
                         }
                         ebayOrderdetail.Shipingfee = (string)transaction.Element(ebayNs + "ActualShippingCost");
                         ebayOrderdetail.EbayAccount = accountName;
@@ -452,13 +756,19 @@ namespace erpcore
                         ebayOrderdetail.PayPalEmailAddress = (string)transaction.Element(ebayNs + "PayPalEmailAddress");
                         ebayOrderdetail.ListingType = (string)item.Element(ebayNs + "ListingType");
                         context.EbayOrderdetail.Add(ebayOrderdetail);
+                        orderDetails.Add(ebayOrderdetail);
+                        m_logger.Info(ebayOrderdetail.Sku + "," + ebayOrderdetail.EbayAmount);
                     }
 
                 }
 
                 context.SaveChanges();
+
+                // Update listing
+                m_platformServiceFactory.GetOrderService(m_company).UpdateListings(context, orderDetails);
             }
         }
+
 
         public void ProcessMessage(XElement element)
         {
@@ -469,6 +779,7 @@ namespace erpcore
                 {
                     string sender = (string)messageElement.Element(ebayNs + "Sender");
                     message.MessageId = (string)messageElement.Element(ebayNs + "MessageID");
+                    m_logger.Info("Processing message " + message.MessageId);
                     message.ExternalMessageId = (string)messageElement.Element(ebayNs + "ExternalMessageId");
                     message.MessageType = (string)messageElement.Element(ebayNs + "MessageType");
                     message.Recipientid = (string)messageElement.Element(ebayNs + "RecipientUserID");
@@ -537,6 +848,7 @@ namespace erpcore
         {
             XElement item = element.Element(ebayNs + "Item");
             string itemId = (string)item.Element(ebayNs + "ItemID");
+            m_logger.Info("Processing ItemListed " + itemId);
             using (ERPContext context = new ERPContext(m_connectionString))
             {
                 var q = from ebayList in context.EbayList
@@ -544,7 +856,61 @@ namespace erpcore
                         select ebayList;
                 if (q.Count() == 0)
                 {
-                    AddItem(context, element);
+                    EbayList listing = new EbayList();
+                    context.EbayList.Add(listing);
+                    listing.ItemId = (string)item.Element(ebayNs + "ItemID"); ;
+                    listing.Sku = (string)item.Element(ebayNs + "SKU");
+                    listing.Title = (string)item.Element(ebayNs + "Title");
+                    listing.ListingType = (string)item.Element(ebayNs + "ListingType");
+                    listing.TimeLeft = (string)item.Element(ebayNs + "TimeLeft");
+                    listing.Quantity = (string)item.Element(ebayNs + "Quantity");
+                    int quantity = 0;
+                    bool success = int.TryParse(listing.Quantity, out quantity);
+                    if (!success)
+                    {
+                        m_logger.Error("Invalid Quantity " + listing.Quantity + " for item " + listing.ItemId);
+                    }
+                    listing.QuantityAvailable = quantity;
+                    listing.QuantitySold = 0;
+                    listing.StartPrice = (string)item.Element(ebayNs + "StartPrice");
+                    listing.GalleryUrl = (string)item.Element(ebayNs + "PictureDetails").Element(ebayNs + "GalleryURL");
+                    listing.Location = (string)item.Element(ebayNs + "Location");
+                    listing.ViewItemUrl = (string)item.Element(ebayNs + "ListingDetails").Element(ebayNs + "ViewItemURL");
+                    XElement sellerElement = item.Element(ebayNs + "Seller");
+                    if (sellerElement != null)
+                    {
+                        listing.EbayAccount = (string)sellerElement.Element(ebayNs + "UserID");
+                    }
+                    else
+                    {
+                        m_logger.Error("Seller element does not exist");
+                    }
+                    listing.EbayUser = "vipadmin";
+                    listing.PayPalEmailAddress = (string)item.Element(ebayNs + "PayPalEmailAddress");
+                    listing.Active = true;
+
+                    IEnumerable<XElement> variations = item.Descendants(ebayNs + "Variation");
+                    if (variations != null && variations.Count() > 0)
+                    {
+                        foreach (XElement variation in variations)
+                        {
+                            EbayListvariations listVariation = new EbayListvariations();
+                            context.EbayListvariations.Add(listVariation);
+                            listVariation.Sku = (string)variation.Element(ebayNs + "SKU");
+                            listVariation.Quantity = (string)variation.Element(ebayNs + "Quantity");
+                            quantity = 0;
+                            success = int.TryParse(listing.Quantity, out quantity);
+                            if (!success)
+                            {
+                                m_logger.Error("Invalid Quantity " + listing.Quantity + " for item " + listing.ItemId+", SKU "+listVariation.Sku);
+                            }
+                            listVariation.QuantityAvailable = quantity;
+                            listVariation.QuantitySold = 0;
+                            listVariation.Itemid = listing.ItemId;
+                            listVariation.EbayAccount = listing.EbayAccount;
+                            listVariation.EbayUser = "vipadmin";
+                        }
+                    }
                 }
                 context.SaveChanges();
             }
@@ -554,6 +920,7 @@ namespace erpcore
         {
             XElement item = element.Element(ebayNs + "Item");
             string itemId = (string)item.Element(ebayNs + "ItemID");
+            m_logger.Info("Processing ItemClosed" + itemId);
             using (ERPContext context = new ERPContext(m_connectionString))
             {
                 var q = from ebayList in context.EbayList
@@ -603,13 +970,21 @@ namespace erpcore
             return eventTypes;
         }
 
-        public void SetNotificationPreferences(string ebayAccount, bool enable, string[] eventTypes)
+        public void SetNotificationPreferences(string url, bool enable, string[] eventTypes)
+        {
+            foreach( string accountName in m_ebayTokenDictionary.Keys)
+            {
+                SetNotificationPreferences(accountName, url, enable, eventTypes);
+            }
+        }
+
+        public void SetNotificationPreferences(string ebayAccount, string url, bool enable, string[] eventTypes)
         {
 
             XElement input = new XElement(ebayNs+ "SetNotificationPreferencesRequest",
                                 new XElement(ebayNs+ "ApplicationDeliveryPreferences",
                                     new XElement(ebayNs+ "ApplicationEnable", enable?"Enable":"Disable"),
-                                    new XElement(ebayNs+ "ApplicationURL", "http://74.215.110.166/api/EbayNotification")));
+                                    new XElement(ebayNs+ "ApplicationURL", url)));
             AddCredentials(ebayAccount, input);
             if( enable )
             {
@@ -634,6 +1009,17 @@ namespace erpcore
                     input.Add(userElement);
             }
             XElement output = MakeCall("SetNotificationPreferences", input);
+        }
+
+        public void GetNotificationsUsage(string ebayAccount)
+        {
+            string startTime = DateTime.Now.AddHours(-9).ToUniversalTime().ToString("yyyy-MM-ddTHH:mm:ssZ");
+            string endTime = DateTime.Now.AddHours(-1).ToUniversalTime().ToString("yyyy-MM-ddTHH:mm:ssZ");
+            XElement input = new XElement(ebayNs + "GetNotificationsUsageRequest",
+                new XElement( ebayNs + "startTime", startTime),
+                new XElement( ebayNs + "endTime", endTime));
+            AddCredentials(ebayAccount, input);
+            XElement output = MakeCall("GetNotificationsUsage", input);
         }
 
         public Dictionary<string, Object> GetUserPreferences( string ebayAccount, List<string> preferenceNames )
@@ -777,20 +1163,37 @@ namespace erpcore
             return ebayToken;
         }
 
-        private void UpdateListingQuantitiesInternal(ERPContext context, string sku, int quantity)
+        private bool isUSLocation( string location )
         {
-            var q = from ebayList in context.EbayList
-                    where ebayList.Sku == sku
-                    where ebayList.ListingType == "FixedPriceItem"
-                    select ebayList;
-            if (q.Count() > 0)
+            string loc = location.ToUpper();
+            return loc.Contains("MASON") || location.Contains("KENTUCKY") || location.Contains("UNITED STATES") || location.Contains("WEST CHESTER") || location.Contains("MIDDLETOWN");
+
+        }
+
+
+        public void UpdateListingQuantities(ERPContext context, string sku, int warehouseQuantity )
+        {
+            var listingQuery = from ebayList in context.EbayList
+                               where ebayList.Sku == sku
+                               where ebayList.ListingType == "FixedPriceItem"
+                               select ebayList;
+            if (listingQuery.Count() > 0)
             {
-                foreach(EbayList listing in q)
+                foreach (EbayList listing in listingQuery)
                 {
-                    string location = listing.Location.ToUpper();
-                    if (location.Contains("MASON") || location.Contains("KENTUCKY") || location.Contains("UNITED STATES") || location.Contains("WEST CHESTER") || location.Contains("MIDDLETOWN"))
+                    if (isUSLocation(listing.Location))
                     {
-                        this.ReviseListingQuantity(listing.EbayAccount, listing.ItemId, quantity);
+                        int newQuantity = 0;
+                        m_logger.Info(listing.EbayAccount + ": " + listing.Sku + " listing quantity: " + listing.QuantityAvailable.GetValueOrDefault() + " warehouse quantity: " + warehouseQuantity);
+
+                        bool update = m_platformServiceFactory.GetInventoryService(m_company).GetNewQuantity( sku, 0, listing.QuantityAvailable.GetValueOrDefault(), warehouseQuantity, out newQuantity);
+                        if (update)
+                        {
+                            listing.QuantityAvailable = newQuantity;
+                            ReviseVariationQuantity( listing.EbayAccount, listing.ItemId, sku, newQuantity);
+
+                            m_logger.Info(listing.EbayAccount + ": Quantity of " + listing.Sku + " has been changed from " + listing.QuantityAvailable.GetValueOrDefault() + " to " + newQuantity);
+                        }
                     }
                 }
             }
@@ -801,64 +1204,28 @@ namespace erpcore
                                from ebayList in context.EbayList
                                where ebayListvariations.Sku == sku
                                where ebayListvariations.Itemid == ebayList.ItemId
-                               select ebayList;
+                               select new { ebayList, ebayListvariations };
                 if (variantQ.Count() > 0)
                 {
-                    foreach(EbayList listing in variantQ)
+                    foreach (var row in variantQ)
                     {
-                        string location = listing.Location.ToUpper();
-                        if (location.Contains("MASON") || location.Contains("KENTUCKY") || location.Contains("UNITED STATES") || location.Contains("WEST CHESTER") || location.Contains("MIDDLETOWN"))
+                        string location = row.ebayList.Location.ToUpper();
+                        if (isUSLocation(row.ebayList.Location))
                         {
-                            this.ReviseVariationQuantity(listing.EbayAccount, listing.ItemId, sku, quantity);
+                            int newQuantity = 0;
+                            m_logger.Info(row.ebayList.EbayAccount + ": " + row.ebayListvariations.Sku + " listing quantity: " + row.ebayListvariations.QuantityAvailable.GetValueOrDefault() + " warehouse quantity: " + warehouseQuantity);
+                            bool update = m_platformServiceFactory.GetInventoryService(m_company).GetNewQuantity(sku, 0, row.ebayListvariations.QuantityAvailable.GetValueOrDefault(), warehouseQuantity, out newQuantity);
+                            if (update)
+                            {
+                                ReviseVariationQuantity(row.ebayList.EbayAccount, row.ebayList.ItemId, sku, warehouseQuantity);
+
+                                m_logger.Info(row.ebayList.EbayAccount + ": Quantity of " + row.ebayListvariations.Sku + " has been changed from " + row.ebayListvariations.QuantityAvailable.GetValueOrDefault() + " to " + newQuantity);
+                            }
                         }
                     }
                 }
             }
         }
-
-        public void UpdateListingQuantities( string sku, int quantity )
-        {
-            using (ERPContext context = new ERPContext(m_connectionString))
-            {
-                UpdateListingQuantitiesInternal(context, sku, quantity);
-
-                // Handle productsCombine
-                var productsCombineQuery = from productsCombine in context.EbayProductscombine
-                                           where productsCombine.GoodsSncombine.Contains(sku)
-                                           select productsCombine;
-                foreach (var row in productsCombineQuery)
-                {
-                    string[] skuStrings = row.GoodsSncombine.Split(',');
-                    foreach (string skuString in skuStrings)
-                    {
-                        if (skuString.Trim().Length > 0)
-                        {
-                            string[] values = skuString.Trim().Split('*');
-                            if (values.Length == 2)
-                            {
-                                int quantity1 = 0;
-                                bool success = Int32.TryParse(values[1].Trim(), out quantity1);
-                                if (success)
-                                {
-                                    int quantity2 = Convert.ToInt16(Math.Ceiling((double)quantity / (double)quantity1));
-                                    UpdateListingQuantitiesInternal(context, values[0], quantity2);
-                                }
-                                else
-                                {
-                                    m_logger.Error("Combined Sku Error: " + row.GoodsSn);
-                                }
-                            }
-                            else
-                            {
-                                m_logger.Error("Combined Sku Error: " + row.GoodsSn);
-                            }
-                        }
-                    }
-
-                }
-            }
-        }
-
         public void CompleteSale(int orderId)
         {
             using (ERPContext context = new ERPContext(m_connectionString))
@@ -911,40 +1278,86 @@ namespace erpcore
         }
 
 
-        public void ProcessPlatformNotification(string content)
+        public void ProcessPlatformNotification(string notificationEventName, XElement childElement)
         {
-            XNamespace soapNs = "http://schemas.xmlsoap.org/soap/envelope/";
-            XElement root = XElement.Parse(content);
-            IEnumerable<XElement> elements = from el in root.Descendants(soapNs + "Body")
-                                             select el;
-            if (elements != null && elements.Count() == 1)
+            if (notificationEventName == "AuctionCheckoutComplete")
             {
-                XElement element = elements.First();
-                IEnumerable<XElement> childElements = element.Elements();
-                if (childElements.Count() == 1)
-                {
-                    XElement childElement = childElements.First();
-                    string notificationEventName = (string)childElement.Element(ebayNs + "NotificationEventName");
-                    m_logger.Info("Processing " + notificationEventName + " event");
-                    if (notificationEventName == "AuctionCheckoutComplete")
-                    {
-                        ProcessAuctionCheckoutComplete(childElement);
-                    }
-                    else if (notificationEventName == "MyMessageseBayMessage" || notificationEventName == "MyMessagesM2MMessage")
-                    {
-                        ProcessMessage(childElement);
-                    }
-                    else if (notificationEventName == "ItemListed")
-                    {
-                        ProcessItemListed(childElement);
-                    }
-                    else if (notificationEventName == "ItemClosed")
-                    {
-                        ProcessItemClosed(childElement);
-                    }
-                }
+                ProcessAuctionCheckoutComplete(childElement);
+            }
+            else if (notificationEventName == "MyMessageseBayMessage" || notificationEventName == "MyMessagesM2MMessage")
+            {
+                ProcessMessage(childElement);
+            }
+            else if (notificationEventName == "ItemListed")
+            {
+                ProcessItemListed(childElement);
+            }
+            else if (notificationEventName == "ItemClosed")
+            {
+                ProcessItemClosed(childElement);
             }
         }
 
+        public void UpdateListingQuantities(ERPContext context, string ebayAccount, Dictionary<string, int> inventoryDictionary, Dictionary<string, Dictionary<string, int>> productCombineDictionary)
+        { 
+            var variantQ = from ebayListvariations in context.EbayListvariations
+                            from ebayList in context.EbayList
+                            where ebayListvariations.Itemid == ebayList.ItemId
+                            select new { ebayListvariations, ebayList };
+            if( ebayAccount.ToUpper() != "ALL")
+            {
+                variantQ = from a in variantQ
+                           where a.ebayList.EbayAccount == ebayAccount
+                           select a;
+            }
+            foreach(var row in variantQ)
+            {
+                if( isUSLocation( row.ebayList.Location))
+                {
+                    int oldQuantity = row.ebayListvariations.QuantityAvailable.GetValueOrDefault();
+                    int newQuantity = 0;
+                    int warehouseQuantity = 0;
+                    m_logger.Info(ebayAccount + ": " + row.ebayListvariations.Sku + " listing quantity: " + oldQuantity + " warehouse quantity: " + warehouseQuantity);
+                    bool update = m_platformServiceFactory.GetInventoryService(m_company).GetNewQuantity(inventoryDictionary, productCombineDictionary, row.ebayListvariations.Sku, 0, oldQuantity, out warehouseQuantity, out newQuantity);
+                    if ( update )
+                    {
+                        row.ebayListvariations.QuantityAvailable = newQuantity;
+                        ReviseVariationQuantity(row.ebayList.EbayAccount, row.ebayList.ItemId, row.ebayListvariations.Sku, newQuantity);
+                        m_logger.Info(ebayAccount + ": Quantity of " + row.ebayListvariations.Sku + " has been changed from " + oldQuantity + " to " + newQuantity);
+                    }
+                }
+            }
+                
+            var listingQuery = from ebayList in context.EbayList
+                    where ebayList.ListingType == "FixedPriceItem"
+                    select ebayList;
+            if (ebayAccount.ToUpper() != "ALL")
+            {
+                listingQuery = from a in listingQuery
+                               where a.EbayAccount == ebayAccount
+                               select a;
+            }
+            foreach (var row in listingQuery)
+            {
+                if (isUSLocation(row.Location))
+                {
+                    int oldQuantity = row.QuantityAvailable.GetValueOrDefault();
+                    int newQuantity = 0;
+                    int warehouseQuantity = 0;
+
+                    m_logger.Info(ebayAccount + ": " + row.Sku + " listing quantity: " + oldQuantity + " warehouse quantity: " + warehouseQuantity);
+                    bool update = m_platformServiceFactory.GetInventoryService(m_company).GetNewQuantity(inventoryDictionary, productCombineDictionary, row.Sku, 0, oldQuantity, out warehouseQuantity, out newQuantity);
+                    if (update)
+                    {
+                        row.QuantityAvailable = newQuantity;
+                        ReviseListingQuantity(row.EbayAccount, row.Sku, row.ItemId, newQuantity);
+
+                        m_logger.Info(ebayAccount + ": Quantity of " + row.Sku + " has been changed from " + oldQuantity + " to " + newQuantity);
+                    }
+                }
+            }
+
+            context.SaveChanges();
+        }
     }
 }

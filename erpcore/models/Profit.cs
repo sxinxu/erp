@@ -8,6 +8,10 @@ namespace erpcore.models
     {
         public string filterType { get; set; }
 
+        public string account { get; set; }
+
+        public string sku { get; set; }
+
         public List<OrderProfit> orders {get;set;}
 
         public OrderProfit total { get; set; }
@@ -16,6 +20,8 @@ namespace erpcore.models
     public class OrderProfit
     {
         public int ebay_id { get; set; }
+
+        public string account { get; set; }
 
         public string sku { get; set; }
 
@@ -38,6 +44,12 @@ namespace erpcore.models
         public string date { get; set; }
 
         public double profit { get; set; }
+
+        public string name { get; set; }
+
+        public string postCode { get; set; }
+
+        public string state { get; set; }
 
         public int pieces { get; set; }
 

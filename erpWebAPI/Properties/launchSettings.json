@@ -11,7 +11,7 @@
     "IIS Express": {
       "commandName": "IISExpress",
       "launchBrowser": true,
-      "launchUrl": "Profit/auto/all/all",
+      "launchUrl": "GetShelves/auto/Middletown/01SHC1303CBK",
       "environmentVariables": {
         "ASPNETCORE_ENVIRONMENT": "Development"
       }

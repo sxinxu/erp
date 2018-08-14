@@ -6,6 +6,7 @@ using System.Text;
 using System.Linq;
 using System.IO;
 using System.Globalization;
+using NLog;
 
 namespace erpcore
 {
@@ -14,21 +15,64 @@ namespace erpcore
         private IPlatformServiceFactory m_platformServiceFactory;
         private string m_company;
         private string m_connectionString;
+        private int[] m_storeIds;
+        private static Logger m_logger = NLog.LogManager.GetCurrentClassLogger();
 
-        public OrderService(IPlatformServiceFactory platformServiceFactory, string company, string connectionString)
+        public OrderService(IPlatformServiceFactory platformServiceFactory, string company, string connectionString, int[] storeIds)
         {
             m_platformServiceFactory = platformServiceFactory;
             m_company = company;
             m_connectionString = connectionString;
+            m_storeIds = storeIds;
+        }
+
+        public List<Order> SearchOrders( string searchType, string searchText )
+        {
+            m_logger.Info("Search Type: " + searchType + ", Search Text: " + searchText);
+            List<Order> orders = null;
+            if( searchType == "OrderId" )
+            {
+                int orderId = 0;
+                bool success = int.TryParse(searchText, out orderId);
+                if( success )
+                {
+                    orders = GetOrders((a => a.ebayOrder.EbayId == orderId));
+                }
+            }
+            else if( searchType == "UserId")
+            {
+                orders = GetOrders((a => a.ebayOrder.EbayUserid.Contains(searchText)));
+            }
+            else if (searchType == "UserName")
+            {
+                orders = GetOrders((a => a.ebayOrder.EbayUsername.Contains(searchText)));
+            }
+            else if (searchType == "SKU")
+            {
+                orders = GetOrders((a => a.ebayOrderDetail.Sku.Contains(searchText)));
+            }
+            else if (searchType == "TrackingNumber")
+            {
+                orders = GetOrders((a => a.ebayOrder.EbayTracknumber == searchText));
+            }
+            return orders;
         }
 
         public List<Order> GetOrdersToShip()
         {
             int[] statusList = new int[]{ 848, 849, 924, 926 };
-            return GetOrders(statusList);
+            return GetOrders(a => statusList.Contains(a.ebayOrder.EbayStatus.GetValueOrDefault()));
         }
 
-        private List<Order> GetOrders( int[] statusList)
+        private class OrderResult
+        {
+            public EbayOrder ebayOrder;
+            public EbayOrderdetail ebayOrderDetail;
+            public EbayTopmenu ebayTopMenu;
+            public EbayOrderslog log;
+        }
+
+        private List<Order> GetOrders( params Func<OrderResult, bool>[] filters )
         {
             List<Order> orders = new List<Order>();
             Dictionary<int, Order> orderDictionary = new Dictionary<int, Order>();
@@ -43,44 +87,62 @@ namespace erpcore
                         from ebayOrderDetail in context.EbayOrderdetail
                         from ebayTopMenu in context.EbayTopmenu
                         where ebayOrder.EbayOrdersn == ebayOrderDetail.EbayOrdersn
-                        where statusList.Contains(ebayOrder.EbayStatus.GetValueOrDefault())
                         where ebayTopMenu.Id == ebayOrder.EbayStatus
                         orderby ebayOrder.EbayId, ebayOrderDetail.Sku, log.Operationtime descending
-                        select new
+                        select new OrderResult
                         {
-                            OrderId = ebayOrder.EbayId,
-                            OrderSn = ebayOrder.EbayOrdersn,
-                            UserId = ebayOrder.EbayUserid,
-                            UserName = ebayOrder.EbayUsername,
-                            PhoneNo = ebayOrder.EbayPhone,
-                            Email = ebayOrder.EbayUsermail,
-                            Address1 = ebayOrder.EbayStreet,
-                            Address2 = ebayOrder.EbayStreet1,
-                            City = ebayOrder.EbayCity,
-                            State = ebayOrder.EbayState,
-                            PostCode = ebayOrder.EbayPostcode,
-                            Country = ebayOrder.EbayCountryname,
-                            WarehouseId = ebayOrder.EbayWarehouse,
-                            AccountName = ebayOrder.EbayAccount,
-                            Carrier = ebayOrder.EbayCarrier,
-                            Status = ebayTopMenu.Name,
-                            StatusId = ebayOrder.EbayStatus.GetValueOrDefault(),
-                            OrderShipFee = ebayOrder.Ordershipfee.GetValueOrDefault(),
-                            CreatedTime = ebayOrder.EbayCreatedtime.GetValueOrDefault(),
-                            PaidTime = ebayOrder.EbayPaidtime,
-                            ShippedTime = ebayOrder.ShippedTime,
-                            MarketTime = ebayOrder.EbayMarkettime,
-                            RecordNumber = ebayOrder.Recordnumber,
-                            OrderDetailId = ebayOrderDetail.EbayId,
-                            SKU = ebayOrderDetail.Sku,
-                            Quantity = ebayOrderDetail.EbayAmount,
-                            ItemPrice = ebayOrderDetail.EbayItemprice,
-                            ItemId = ebayOrderDetail.EbayItemid,
-                            ItemName = ebayOrderDetail.EbayItemtitle,
-                            ShippingFee = ebayOrderDetail.Shipingfee,
-                            Log = log
+                            ebayOrder = ebayOrder,
+                            ebayOrderDetail = ebayOrderDetail,
+                            ebayTopMenu = ebayTopMenu,
+                            log = log
                         };
-                foreach (var row in q)
+
+                IEnumerable<OrderResult> q1 = q;
+                if (filters != null)
+                {
+                    foreach( var filter in filters)
+                    {
+                        q1 = q1.Where(filter);
+                    }
+                }
+
+                var q2 = from a in q1
+                         select new
+                         {
+                             OrderId = a.ebayOrder.EbayId,
+                             OrderSn = a.ebayOrder.EbayOrdersn,
+                             UserId = a.ebayOrder.EbayUserid,
+                             UserName = a.ebayOrder.EbayUsername,
+                             PhoneNo = a.ebayOrder.EbayPhone,
+                             Email = a.ebayOrder.EbayUsermail,
+                             Address1 = a.ebayOrder.EbayStreet,
+                             Address2 = a.ebayOrder.EbayStreet1,
+                             City = a.ebayOrder.EbayCity,
+                             State = a.ebayOrder.EbayState,
+                             PostCode = a.ebayOrder.EbayPostcode,
+                             Country = a.ebayOrder.EbayCountryname,
+                             WarehouseId = a.ebayOrder.EbayWarehouse,
+                             AccountName = a.ebayOrder.EbayAccount,
+                             Carrier = a.ebayOrder.EbayCarrier,
+                             TrackingNumber = a.ebayOrder.EbayTracknumber,
+                             Status = a.ebayTopMenu.Name,
+                             StatusId = a.ebayOrder.EbayStatus.GetValueOrDefault(),
+                             OrderShipFee = a.ebayOrder.Ordershipfee.GetValueOrDefault(),
+                             CreatedTime = a.ebayOrder.EbayCreatedtime.GetValueOrDefault(),
+                             PaidTime = a.ebayOrder.EbayPaidtime,
+                             ShippedTime = a.ebayOrder.ShippedTime,
+                             MarketTime = a.ebayOrder.EbayMarkettime,
+                             RecordNumber = a.ebayOrder.Recordnumber,
+                             OrderDetailId = a.ebayOrderDetail.EbayId,
+                             SKU = a.ebayOrderDetail.Sku,
+                             Quantity = a.ebayOrderDetail.EbayAmount,
+                             ItemPrice = a.ebayOrderDetail.EbayItemprice,
+                             ItemId = a.ebayOrderDetail.EbayItemid,
+                             ItemName = a.ebayOrderDetail.EbayItemtitle,
+                             ShippingFee = a.ebayOrderDetail.Shipingfee,
+                             Log = a.log
+                        };
+                foreach (var row in q2)
                 {
                     Order order = null;
                     if( orderDictionary.ContainsKey(row.OrderId))
@@ -105,6 +167,7 @@ namespace erpcore
                         order.WarehouseId = row.WarehouseId;
                         order.AccountName = row.AccountName;
                         order.Carrier = row.Carrier;
+                        order.TrackingNumber = row.TrackingNumber;
                         order.Status = row.Status;
                         order.StatusId = row.StatusId;
                         order.ShippingFee = row.OrderShipFee;
@@ -219,10 +282,9 @@ namespace erpcore
             
             return orders;
         }
+        
 
-        //public void UpdateOrder()
-
-        public Profit GetProfits( string filter, string account )
+        public Profit GetProfits( string dateFilter, string skuFilter, string account )
         {
             Profit profit = new Profit();
 
@@ -258,23 +320,44 @@ namespace erpcore
                     height = Convert.ToDouble(values[4].Trim());
                 }
                 double internationalShipping = 5000*length*width*height*0.01*0.01*0.01/62;
-                costDictionary[sku] = internationalShipping; 
+                internationalShippingDictionary[sku] = internationalShipping; 
             }
             reader.Close();
 
 
             CultureInfo cultureInfo = new CultureInfo("en-US");
-            bool hasFilter = false;
             bool isMonthFilter = false;
             bool isDayFilter = false;
             int startTime = 0;
             int endTime = 0;
-            if (filter.Length == 7)
+            if(dateFilter.Contains("to"))
             {
-                hasFilter = true;
+                string[] dates = dateFilter.Split("to");
+                if( dates.Length != 2)
+                {
+                    throw new Exception("Invalid dates");
+                }
+                isDayFilter = true;
+                DateTime startDate;
+                bool success = DateTime.TryParseExact(dates[0], "yyyy-M-d", cultureInfo, DateTimeStyles.None, out startDate);
+                if (!success)
+                {
+                    throw new Exception("Invalid start date.");
+                }
+                DateTime endDate;
+                success = DateTime.TryParseExact(dates[1], "yyyy-M-d", cultureInfo, DateTimeStyles.None, out endDate);
+                if (!success)
+                {
+                    throw new Exception("Invalid end date.");
+                }
+                startTime = DateUtils.ConvertToUnixTime(startDate);
+                endTime = DateUtils.ConvertToUnixTime(endDate);
+            }
+            else if (dateFilter.Length == 7)
+            {
                 isMonthFilter = true;
                 DateTime startDate;
-                bool success = DateTime.TryParseExact(filter + "-01", "yyyy-M-d", cultureInfo, DateTimeStyles.None, out startDate);
+                bool success = DateTime.TryParseExact(dateFilter + "-01", "yyyy-M-d", cultureInfo, DateTimeStyles.None, out startDate);
                 if (!success)
                 {
                     throw new Exception("Invalid start date.");
@@ -282,12 +365,11 @@ namespace erpcore
                 startTime = DateUtils.ConvertToUnixTime(startDate);
                 endTime = DateUtils.ConvertToUnixTime(startDate.AddMonths(1));
             }
-            else if(filter.Length == 10)
+            else if(dateFilter.Length == 10)
             {
-                hasFilter = true;
                 isDayFilter = true;
                 DateTime startDate;
-                bool success = DateTime.TryParseExact(filter, "yyyy-M-d", cultureInfo, DateTimeStyles.None, out startDate);
+                bool success = DateTime.TryParseExact(dateFilter, "yyyy-M-d", cultureInfo, DateTimeStyles.None, out startDate);
                 if (!success)
                 {
                     throw new Exception("Invalid start date.");
@@ -295,9 +377,20 @@ namespace erpcore
                 startTime = DateUtils.ConvertToUnixTime(startDate);
                 endTime = DateUtils.ConvertToUnixTime(startDate.AddDays(1));
             }
+            else
+            {
+                DateTime dateTime = DateTime.Now.AddYears(-1);
+                startTime = DateUtils.ConvertToUnixTime(dateTime);
+                endTime = DateUtils.ConvertToUnixTime(DateTime.Now);
+            }
 
             using (ERPContext context = new ERPContext(m_connectionString))
             {
+                string[] storeIdStrings = new string[m_storeIds.Length];
+                for(int i = 0; i < m_storeIds.Length; i++)
+                {
+                    storeIdStrings[i] = m_storeIds[i].ToString();
+                }
                 var q = from ebayOrder in context.EbayOrder
                         from ebayOrderdetail in context.EbayOrderdetail
                         join ebayProductsCombine in context.EbayProductscombine
@@ -305,9 +398,9 @@ namespace erpcore
                         into pb
                         from productsCombine in pb.DefaultIfEmpty()
                         where ebayOrder.EbayOrdersn == ebayOrderdetail.EbayOrdersn
-                        where ebayOrder.EbayCreatedtime.GetValueOrDefault() >= startTime
-                        where ebayOrder.EbayCreatedtime.GetValueOrDefault() >= endTime
-                        where ebayOrder.EbayWarehouse == "101" || ebayOrder.EbayWarehouse == "108" 
+                        where storeIdStrings.Contains(ebayOrder.EbayWarehouse)
+                        where ebayOrder.EbayStatus == 851
+                        where ebayOrder.EbayCreatedtime != null && ebayOrder.EbayCreatedtime >= startTime && ebayOrder.EbayCreatedtime < endTime
                         orderby ebayOrder.EbayCreatedtime
                         select new
                         {
@@ -315,33 +408,34 @@ namespace erpcore
                             SKU = ebayOrderdetail.Sku,
                             Quantity = ebayOrderdetail.EbayAmount,
                             ItemPrice = ebayOrderdetail.EbayItemprice,
+                            ItemTitle = ebayOrderdetail.EbayItemtitle,
                             ShippingFee = ebayOrderdetail.Shipingfee,
                             FinalValueFee = ebayOrderdetail.FinalValueFee,
                             FeeOrCreditAmount = ebayOrderdetail.FeeOrCreditAmount,
                             ProductsCombineSku = productsCombine != null ? productsCombine.GoodsSncombine:""
                         };
-                if( hasFilter)
+                if( account.ToUpper() != "ALL")
                 {
-                    q.Where(a => a.Order.EbayCreatedtime != null && a.Order.EbayCreatedtime >= startTime && a.Order.EbayCreatedtime < endTime);
+                    q = from a in q
+                        where a.Order.EbayAccount == account
+                        select a;
                 }
-                else
+                if( skuFilter.ToUpper() != "ALL")
                 {
-                    DateTime dateTime = DateTime.Now.AddYears(-1);
-                    int time = DateUtils.ConvertToUnixTime(dateTime);
-                    q.Where(a => a.Order.EbayCreatedtime != null && a.Order.EbayCreatedtime >= time);
-                }
-                if( account != "all")
-                {
-                    q.Where(a => a.Order.EbayAccount == account);
+                    q = from a in q
+                        where a.SKU == skuFilter
+                        select a;
                 }
 
-                List<OrderProfit> orderProfitList = new List<OrderProfit>();
+                List < OrderProfit > orderProfitList = new List<OrderProfit>();
                 OrderProfit totalProfit = new OrderProfit();
                 SortedDictionary<string, OrderProfit> totalDictionary = new SortedDictionary<string, OrderProfit>();
+                int count = q.Count();
                 foreach(var row in q)
                 {
                     OrderProfit orderProfit = new OrderProfit();
                     orderProfit.ebay_id = row.Order.EbayId;
+                    orderProfit.account = row.Order.EbayAccount;
                     if( row.ProductsCombineSku.Length > 0 )
                     {
                         string[] values = row.ProductsCombineSku.Split(',');
@@ -390,6 +484,7 @@ namespace erpcore
                         }
                     }
                     orderProfit.sku = row.SKU;
+                    orderProfit.title = row.ItemTitle;
                     int quantity1 = 1;
                     bool success1 = int.TryParse(row.Quantity, out quantity1);
                     orderProfit.quantity = quantity1;
@@ -398,7 +493,7 @@ namespace erpcore
                     double shippingFee = 0.0;
                     success1 = double.TryParse(row.ShippingFee, out shippingFee);
                     orderProfit.sales = itemPrice * quantity1 + shippingFee;
-                    if (m_platformServiceFactory.GetAmazonService(m_company).isAmazonAccount(row.Order.EbayAccount))
+                    if (m_platformServiceFactory.GetAmazonService(m_company).GetAccountNames().Contains(row.Order.EbayAccount))
                     {
                         orderProfit.ebayFee = orderProfit.sales * 0.15;
                     }
@@ -413,7 +508,7 @@ namespace erpcore
                     orderProfit.shippingFee = row.Order.Ordershipfee.GetValueOrDefault();
                     DateTime date = DateUtils.ConvertUnixTimeToDateTime(row.Order.EbayCreatedtime.GetValueOrDefault());
                     orderProfit.date = date.ToString("yyyy-MM-dd");
-                    orderProfit.profit = orderProfit.sales - orderProfit.ebayFee - orderProfit.paypalFee - orderProfit.shippingFee - orderProfit.internationalShippingFee - orderProfit.discount;
+                    orderProfit.profit = orderProfit.sales - orderProfit.cost - orderProfit.ebayFee - orderProfit.paypalFee - orderProfit.shippingFee - orderProfit.internationalShippingFee - orderProfit.discount;
 
                     if( isMonthFilter )
                     {
@@ -441,6 +536,9 @@ namespace erpcore
                     }
                     else if(isDayFilter)
                     {
+                        orderProfit.name = row.Order.EbayUsername;
+                        orderProfit.postCode = row.Order.EbayPostcode;
+                        orderProfit.state = row.Order.EbayState;
                         orderProfitList.Add(orderProfit);
                     }
                     else
@@ -495,9 +593,313 @@ namespace erpcore
                     profit.orders = totalDictionary.Values.ToList();
                 }
                 profit.total = totalProfit;
+                profit.account = account;
+                profit.sku = skuFilter;
             }
 
             return profit;
         }
+
+        public void UpdateAccountListingQuantities( string accountName, bool refresh )
+        {
+            bool allAccounts = accountName.ToUpper() == "ALL";
+            bool isAmazonAccount = false;
+            IAmazonService amazonService = m_platformServiceFactory.GetAmazonService(m_company);
+            if ( !allAccounts)
+            {
+                isAmazonAccount = amazonService.GetAccountNames().Contains(accountName);
+            }
+            using (ERPContext context = new ERPContext(m_connectionString))
+            {
+                IEbayService ebayService = m_platformServiceFactory.GetEbayService(m_company);
+                if ( refresh )
+                {
+                    if (allAccounts)
+                    {
+                        ebayService.RefreshListings(context);
+                        amazonService.RefreshListings(context);
+                    }
+                    else if( !isAmazonAccount)
+                    {
+                        ebayService.RefreshListings(context, accountName);
+                        amazonService.RefreshListings(context, accountName);
+                    }
+                }
+                
+                // Get inventory
+                Dictionary<string, int> inventoryDictionary = new Dictionary<string, int>();
+                var inventoryQuery = from ebayOnHandle in context.EbayOnhandle
+                                     where m_storeIds.Contains(ebayOnHandle.StoreId)
+                                     select new { sku = ebayOnHandle.GoodsSn, quantity = ebayOnHandle.GoodsCount.GetValueOrDefault() };
+                foreach (var row in inventoryQuery)
+                {
+                    if (inventoryDictionary.ContainsKey(row.sku))
+                    {
+                        inventoryDictionary[row.sku] += row.quantity;
+                    }
+                    else
+                    {
+                        inventoryDictionary[row.sku] = row.quantity;
+                    }
+                }
+
+                var orderQuery = from ebayOrder in context.EbayOrder
+                                 from ebayOrderDetail in context.EbayOrderdetail
+                                 where ebayOrder.EbayOrdersn == ebayOrderDetail.EbayOrdersn
+                                 where ebayOrder.EbayCouny == "US"
+                                 where ebayOrder.EbayStatus == 1 || ebayOrder.EbayStatus == 848 || ebayOrder.EbayStatus == 924 || ebayOrder.EbayStatus == 850
+                                 select new { sku = ebayOrderDetail.Sku, ebayAmount = ebayOrderDetail.EbayAmount };
+                foreach( var row in orderQuery)
+                {
+                    if (inventoryDictionary.ContainsKey(row.sku))
+                    {
+                        int quantity = 0;
+                        int.TryParse(row.ebayAmount, out quantity);
+                        inventoryDictionary[row.sku] -= quantity;
+                    }
+                }
+
+                // Get product combine
+                Dictionary<string, Dictionary<string, int>> productCombineDictionary = new Dictionary<string, Dictionary<string, int>>();
+                var productsCombineQuery = from productsCombine in context.EbayProductscombine
+                                           select productsCombine;
+                foreach (var row in productsCombineQuery)
+                {
+                    string sku = row.GoodsSn;
+                    Dictionary<string, int> subSkus = new Dictionary<string, int>();
+                    string[] skuStrings = row.GoodsSncombine.Split(',');
+                    foreach (string skuString in skuStrings)
+                    {
+                        if (skuString.Trim().Length > 0)
+                        {
+                            string[] values = skuString.Trim().Split('*');
+                            if (values.Length == 2)
+                            {
+                                int quantity1 = 0;
+                                bool success = Int32.TryParse(values[1].Trim(), out quantity1);
+                                if (success)
+                                {
+                                    subSkus[values[0].ToUpper().Trim()] = quantity1;
+                                }
+                                else
+                                {
+                                    m_logger.Error("Combined Sku Error: " + row.GoodsSn);
+                                    continue;
+                                }
+                            }
+                            else
+                            {
+                                m_logger.Error("Combined Sku Error: " + row.GoodsSn);
+                                continue;
+                            }
+                        }
+                    }
+                    productCombineDictionary[sku] = subSkus;
+                }
+
+                if (allAccounts || !isAmazonAccount)
+                {
+                    ebayService.UpdateListingQuantities(context, accountName, inventoryDictionary, productCombineDictionary);
+                }
+
+                if( allAccounts || isAmazonAccount)
+                {
+                    amazonService.UpdateListingQuantities(context, accountName, inventoryDictionary, productCombineDictionary);
+                }
+            }
+        }
+
+        public void UpdateSKUListingQuantities(string sku)
+        {
+            using (ERPContext context = new ERPContext(m_connectionString))
+            {
+                UpdateSKUListingQuantities(context, sku);
+            }
+        }
+
+        public void UpdateSKUListingQuantities(ERPContext context, string sku)
+        {
+            IEbayService ebayService = m_platformServiceFactory.GetEbayService(m_company);
+            IAmazonService amazonService = m_platformServiceFactory.GetAmazonService(m_company);
+            IInventoryService inventoryService = m_platformServiceFactory.GetInventoryService(m_company);
+            int quantity = 0;
+            bool found = inventoryService.GetWarehouseQuantity(context, sku, out quantity);
+            if (found)
+            {
+                ebayService.UpdateListingQuantities(context, sku, quantity);
+                amazonService.UpdateListingQuantities(context, sku, quantity);
+            }
+
+            // Handle productsCombine
+            var productsCombineQuery = from productsCombine in context.EbayProductscombine
+                                        where productsCombine.GoodsSncombine.Contains(sku)
+                                        select productsCombine;
+            foreach (var row in productsCombineQuery)
+            {
+                found = false;
+                string productCombineSku = row.GoodsSn;
+                int warehouseQuantity = -1;
+                string[] skuStrings = row.GoodsSncombine.Split(',');
+                foreach (string skuString in skuStrings)
+                {
+                    if (skuString.Trim().Length > 0)
+                    {
+                        string[] values = skuString.Trim().Split('*');
+                        if (values.Length == 2)
+                        {
+                            string sku1 = values[0].Trim();
+                            int quantity1 = 0;
+                            bool success = Int32.TryParse(values[1].Trim(), out quantity1);
+                            if (success)
+                            {
+                                int quantity2 = 0;
+                                found = m_platformServiceFactory.GetInventoryService(m_company).GetWarehouseQuantity(context, sku1, out quantity2);
+                                if (found)
+                                {
+                                    quantity2 = quantity2 / quantity1;
+                                    if (warehouseQuantity < 0 || quantity2 < warehouseQuantity)
+                                    {
+                                        warehouseQuantity = quantity2;
+                                    }
+                                }
+                                else
+                                {
+                                    break;
+                                }
+                            }
+                            else
+                            {
+                                m_logger.Error("Combined Sku Error: " + row.GoodsSn+", "+row.GoodsSncombine);
+                            }
+                        }
+                        else
+                        {
+                            m_logger.Error("Combined Sku Error: " + row.GoodsSn + ", " + row.GoodsSncombine);
+                        }
+                    }
+                }
+
+                if (found)
+                {
+                    ebayService.UpdateListingQuantities(context, sku, quantity);
+                    amazonService.UpdateListingQuantities(context, sku, quantity);
+                }
+            }
+        }
+
+        public void SyncOrders(List<string> accountNames, DateTime createdTimeFrom, DateTime createdTimeTo)
+        {
+            using (ERPContext context = new ERPContext(m_connectionString))
+            {
+                IEbayService ebayService = m_platformServiceFactory.GetEbayService(m_company);
+                IAmazonService amazonService = m_platformServiceFactory.GetAmazonService(m_company);
+                List<string> allAmazonAccountNames = amazonService.GetAccountNames();
+                List<EbayOrderdetail> orderDetails = new List<EbayOrderdetail>();
+                foreach (string accountName in accountNames)
+                {
+                    if (allAmazonAccountNames.Contains(accountName))
+                    {
+                        amazonService.SyncOrders( context, accountName, createdTimeFrom, createdTimeTo, orderDetails);
+                    }
+                    else
+                    {
+                        ebayService.SyncOrders( context, accountName, createdTimeFrom, createdTimeTo, orderDetails);
+                    }
+                }
+
+                UpdateListings(context, orderDetails);
+            }
+        }
+
+        public void UpdateListings(ERPContext context, List<EbayOrderdetail> orderDetails)
+        {
+            IAmazonService amazonService = m_platformServiceFactory.GetAmazonService(m_company);
+            List<string> amazonAccountNames = amazonService.GetAccountNames();
+            HashSet<string> skus = new HashSet<string>();
+            foreach (EbayOrderdetail orderDetail in orderDetails)
+            {
+                skus.Add(orderDetail.Sku);
+
+                int quantity = 0;
+                bool success = int.TryParse(orderDetail.EbayAmount, out quantity);
+                if (success)
+                {
+                    if ( amazonAccountNames.Contains(orderDetail.EbayAccount))
+                    {
+                        var q = from amazonList in context.AmazonList
+                                where amazonList.SKU == orderDetail.Sku
+                                where amazonList.AccountName == orderDetail.EbayAccount
+                                select amazonList;
+                        if( q.Count() > 0 )
+                        {
+                            AmazonList listing = q.First();
+                            listing.Quantity = listing.Quantity - quantity;
+                        }
+                    }
+                    else
+                    {
+                        var q = from ebayList in context.EbayList
+                                where ebayList.ItemId == orderDetail.EbayItemid
+                                where ebayList.EbayAccount == orderDetail.EbayAccount
+                                where ebayList.Sku == orderDetail.Sku
+                                select ebayList;
+                        if (q.Count() > 0)
+                        {
+                            EbayList listing = q.First();
+                            listing.QuantityAvailable = listing.QuantityAvailable.GetValueOrDefault() - quantity;
+                        }
+                        else
+                        {
+                            var q1 = from ebayList in context.EbayList
+                                     from ebayListVariations in context.EbayListvariations
+                                     where ebayList.ItemId == ebayListVariations.Itemid
+                                     where ebayList.ItemId == orderDetail.EbayItemid
+                                     where ebayList.EbayAccount == orderDetail.EbayAccount
+                                     where ebayListVariations.Sku == orderDetail.Sku
+                                     select ebayListVariations;
+                            if (q1.Count() > 0)
+                            {
+                                EbayListvariations listingVariations = q1.First();
+                                listingVariations.QuantityAvailable = listingVariations.QuantityAvailable - quantity;
+                            }
+                        }
+                    }
+                }
+            }
+            context.SaveChanges();
+
+            // Check product combines
+            List<string> skuList = skus.ToList();
+            var productsCombineQuery = from productsCombine in context.EbayProductscombine
+                                       where skuList.Contains(productsCombine.GoodsSn)
+                                       select productsCombine;
+            foreach (var row in productsCombineQuery)
+            {
+                skus.Remove(row.GoodsSn);
+                string[] skuStrings = row.GoodsSncombine.Split(',');
+                foreach (string skuString in skuStrings)
+                {
+                    if (skuString.Trim().Length > 0)
+                    {
+                        string[] values = skuString.Trim().Split('*');
+                        if (values.Length == 2)
+                        {
+                            string sku = values[0].Trim();
+                            UpdateSKUListingQuantities(sku);
+                        }
+                        else
+                        {
+                            m_logger.Error("Combined Sku Error: " + row.GoodsSn + ", " + row.GoodsSncombine);
+                        }
+                    }
+                }
+            }
+
+            foreach (string sku in skus)
+            {
+                UpdateSKUListingQuantities(sku);
+            }
+        }
+
     }
 }

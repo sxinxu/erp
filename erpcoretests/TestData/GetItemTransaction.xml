@@ -1,257 +1,270 @@
-﻿<?xml version="1.0" encoding="UTF-8"?>
+<?xml version="1.0" encoding="UTF-8"?>
 <soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
   <soapenv:Header>
     <ebl:RequesterCredentials soapenv:mustUnderstand="0" xmlns:ns="urn:ebay:apis:eBLBaseComponents" xmlns:ebl="urn:ebay:apis:eBLBaseComponents">
       <ebl:NotificationSignature xmlns:ebl="urn:ebay:apis:eBLBaseComponents">kXzp3dwa3GOx2DmlPu4zKQ==</ebl:NotificationSignature>
     </ebl:RequesterCredentials>
   </soapenv:Header>
-  <soapenv:Body>
-    <GetItemTransactionsResponse xmlns="urn:ebay:apis:eBLBaseComponents">
-      <Timestamp>2018-05-17T21:53:16.673Z</Timestamp>
-      <Ack>Success</Ack>
-      <CorrelationID>1326433192771</CorrelationID>
-      <Version>1057</Version>
-      <Build>E1057_CORE_APIXO_18684207_R1</Build>
-      <NotificationEventName>FixedPriceTransaction</NotificationEventName>
-      <RecipientUserID>notesonboard</RecipientUserID>
-      <EIASToken>nY+sHZ2PrBmdj6wVnY+sEZ2PrA2dj6AGkIemCpiLpASdj6x9nY+seQ==</EIASToken>
-      <PaginationResult>
-        <TotalNumberOfPages>1</TotalNumberOfPages>
-        <TotalNumberOfEntries>1</TotalNumberOfEntries>
-      </PaginationResult>
-      <HasMoreTransactions>false</HasMoreTransactions>
-      <TransactionsPerPage>100</TransactionsPerPage>
-      <PageNumber>1</PageNumber>
-      <ReturnedTransactionCountActual>1</ReturnedTransactionCountActual>
-      <Item>
-        <ApplicationData>ic6d9i84239810464131580310ae</ApplicationData>
-        <AutoPay>true</AutoPay>
-        <BuyItNowPrice currencyID="USD">0.0</BuyItNowPrice>
-        <Currency>USD</Currency>
-        <ItemID>272969071343</ItemID>
-        <ListingDetails>
-          <StartTime>2017-12-05T02:39:32.000Z</StartTime>
-          <EndTime>2018-06-03T02:39:32.000Z</EndTime>
-          <ViewItemURL>http://cgi.ebay.com/ebaymotors/ws/eBayISAPI.dll?ViewItem&amp;Item=272969071343</ViewItemURL>
-          <ViewItemURLForNaturalSearch>http://cgi.ebay.com/ebaymotors/For-2009-2014-FORD-F150-09-14-Front-Bumper-Guards-Pads-Caps-Inserts-LH-RH-Set?item=272969071343&amp;category=0&amp;cmd=ViewItem</ViewItemURLForNaturalSearch>
-        </ListingDetails>
-        <ListingType>FixedPriceItem</ListingType>
-        <PaymentMethods>PayPal</PaymentMethods>
-        <PrimaryCategory>
-          <CategoryID>33640</CategoryID>
-        </PrimaryCategory>
-        <PrivateListing>false</PrivateListing>
-        <Quantity>345</Quantity>
-        <SecondaryCategory>
-          <CategoryID>0</CategoryID>
-        </SecondaryCategory>
-        <Seller>
-          <AboutMePage>false</AboutMePage>
-          <EIASToken>nY+sHZ2PrBmdj6wVnY+sEZ2PrA2dj6AGkIemCpiLpASdj6x9nY+seQ==</EIASToken>
-          <Email>notesonbrd@gmail.com</Email>
-          <FeedbackScore>13763</FeedbackScore>
-          <PositiveFeedbackPercent>99.1</PositiveFeedbackPercent>
-          <FeedbackPrivate>false</FeedbackPrivate>
-          <FeedbackRatingStar>YellowShooting</FeedbackRatingStar>
-          <IDVerified>false</IDVerified>
-          <eBayGoodStanding>true</eBayGoodStanding>
-          <NewUser>false</NewUser>
-          <RegistrationDate>2013-11-25T23:49:13.000Z</RegistrationDate>
-          <Site>US</Site>
-          <Status>Confirmed</Status>
-          <UserID>notesonboard</UserID>
-          <UserIDChanged>false</UserIDChanged>
-          <UserIDLastChanged>2013-11-25T23:48:35.000Z</UserIDLastChanged>
-          <VATStatus>NoVATTax</VATStatus>
-          <SellerInfo>
-            <AllowPaymentEdit>true</AllowPaymentEdit>
-            <CheckoutEnabled>true</CheckoutEnabled>
-            <CIPBankAccountStored>false</CIPBankAccountStored>
-            <GoodStanding>true</GoodStanding>
-            <LiveAuctionAuthorized>false</LiveAuctionAuthorized>
-            <MerchandizingPref>OptIn</MerchandizingPref>
-            <QualifiesForB2BVAT>false</QualifiesForB2BVAT>
-            <StoreOwner>true</StoreOwner>
-            <StoreURL>http://stores.ebay.com/notesonboard</StoreURL>
-            <SafePaymentExempt>false</SafePaymentExempt>
-            <TopRatedSeller>true</TopRatedSeller>
-          </SellerInfo>
-        </Seller>
-        <SellingStatus>
-          <ConvertedCurrentPrice currencyID="USD">14.26</ConvertedCurrentPrice>
-          <CurrentPrice currencyID="USD">14.26</CurrentPrice>
-          <QuantitySold>337</QuantitySold>
-          <ListingStatus>Active</ListingStatus>
-        </SellingStatus>
-        <Site>eBayMotors</Site>
-        <StartPrice currencyID="USD">14.26</StartPrice>
-        <Title>For 2009-2014 FORD F150 09-14 Front Bumper Guards Pads Caps Inserts LH + RH Set</Title>
-        <SKU>02RSB1201ABK</SKU>
+  <soapenv:Body><GetItemTransactionsResponse xmlns="urn:ebay:apis:eBLBaseComponents">
+  <Timestamp>2018-06-30T03:51:29.908Z</Timestamp>
+  <Ack>Success</Ack>
+  <CorrelationID>1367432922250</CorrelationID>
+  <Version>1067</Version>
+  <Build>E1067_INTL_APIXO_18734111_R1</Build>
+  <NotificationEventName>AuctionCheckoutComplete</NotificationEventName>
+  <RecipientUserID>skyfairy156</RecipientUserID>
+  <EIASToken>nY+sHZ2PrBmdj6wVnY+sEZ2PrA2dj6AHk4qkAJCFpwWdj6x9nY+seQ==</EIASToken>
+  <PaginationResult>
+    <TotalNumberOfPages>1</TotalNumberOfPages>
+    <TotalNumberOfEntries>1</TotalNumberOfEntries>
+  </PaginationResult>
+  <HasMoreTransactions>false</HasMoreTransactions>
+  <TransactionsPerPage>100</TransactionsPerPage>
+  <PageNumber>1</PageNumber>
+  <ReturnedTransactionCountActual>1</ReturnedTransactionCountActual>
+  <Item>
+    <ApplicationData>ic6d9i84312598080131730110bd</ApplicationData>
+    <AutoPay>true</AutoPay>
+    <BuyItNowPrice currencyID="USD">0.0</BuyItNowPrice>
+    <Currency>USD</Currency>
+    <ItemID>182639230997</ItemID>
+    <ListingDetails>
+      <StartTime>2017-06-27T01:16:57.000Z</StartTime>
+      <EndTime>2018-07-22T01:16:57.000Z</EndTime>
+      <ViewItemURL>http://cgi.ebay.com/ws/eBayISAPI.dll?ViewItem&amp;Item=182639230997</ViewItemURL>
+      <ViewItemURLForNaturalSearch>http://cgi.ebay.com/New-Portable-Mini-Cooling-Fan-Desk-Travel-USB-Battery-Powered-Air-Conditioner?item=182639230997&amp;category=0&amp;cmd=ViewItem</ViewItemURLForNaturalSearch>
+    </ListingDetails>
+    <ListingType>FixedPriceItem</ListingType>
+    <PaymentMethods>PayPal</PaymentMethods>
+    <PrimaryCategory>
+      <CategoryID>20612</CategoryID>
+    </PrimaryCategory>
+    <PrivateListing>false</PrivateListing>
+    <Quantity>398</Quantity>
+    <SecondaryCategory>
+      <CategoryID>0</CategoryID>
+    </SecondaryCategory>
+    <Seller>
+      <AboutMePage>false</AboutMePage>
+      <EIASToken>nY+sHZ2PrBmdj6wVnY+sEZ2PrA2dj6AHk4qkAJCFpwWdj6x9nY+seQ==</EIASToken>
+      <Email>xwhql9966@sina.com</Email>
+      <FeedbackScore>24924</FeedbackScore>
+      <PositiveFeedbackPercent>99.4</PositiveFeedbackPercent>
+      <FeedbackPrivate>false</FeedbackPrivate>
+      <FeedbackRatingStar>YellowShooting</FeedbackRatingStar>
+      <IDVerified>false</IDVerified>
+      <eBayGoodStanding>true</eBayGoodStanding>
+      <NewUser>false</NewUser>
+      <RegistrationDate>2015-01-30T06:59:22.000Z</RegistrationDate>
+      <Site>HongKong</Site>
+      <Status>Confirmed</Status>
+      <UserID>skyfairy156</UserID>
+      <UserIDChanged>false</UserIDChanged>
+      <UserIDLastChanged>2015-01-30T06:57:58.000Z</UserIDLastChanged>
+      <VATStatus>NoVATTax</VATStatus>
+      <SellerInfo>
+        <AllowPaymentEdit>false</AllowPaymentEdit>
+        <CheckoutEnabled>false</CheckoutEnabled>
+        <CIPBankAccountStored>false</CIPBankAccountStored>
+        <GoodStanding>true</GoodStanding>
+        <LiveAuctionAuthorized>false</LiveAuctionAuthorized>
+        <MerchandizingPref>OptIn</MerchandizingPref>
+        <QualifiesForB2BVAT>false</QualifiesForB2BVAT>
+        <StoreOwner>true</StoreOwner>
+        <StoreURL>http://stores.ebay.com.hk/skyfairy156</StoreURL>
+        <SafePaymentExempt>false</SafePaymentExempt>
+        <TopRatedSeller>true</TopRatedSeller>
+      </SellerInfo>
+      <SiteVerified>true</SiteVerified>
+    </Seller>
+    <SellingStatus>
+      <ConvertedCurrentPrice currencyID="HKD">86.17</ConvertedCurrentPrice>
+      <CurrentPrice currencyID="USD">10.98</CurrentPrice>
+      <QuantitySold>94</QuantitySold>
+      <ListingStatus>Active</ListingStatus>
+    </SellingStatus>
+    <Site>US</Site>
+    <StartPrice currencyID="USD">10.98</StartPrice>
+    <Title>New Portable Mini Cooling Fan Desk Travel USB Battery Powered Air Conditioner </Title>
+    <GetItFast>false</GetItFast>
+    <SKU>09FTF0001A</SKU>
+    <IntegratedMerchantCreditCardEnabled>false</IntegratedMerchantCreditCardEnabled>
+    <ConditionID>1000</ConditionID>
+    <ConditionDisplayName>New</ConditionDisplayName>
+  </Item>
+  <TransactionArray>
+    <Transaction>
+      <AmountPaid currencyID="USD">11.98</AmountPaid>
+      <AdjustmentAmount currencyID="USD">0.0</AdjustmentAmount>
+      <ConvertedAdjustmentAmount currencyID="HKD">0.0</ConvertedAdjustmentAmount>
+      <Buyer>
+        <AboutMePage>true</AboutMePage>
+        <EIASToken>nY+sHZ2PrBmdj6wVnY+sEZ2PrA2dj6wJkYOlDZOBqQ2dj6x9nY+seQ==</EIASToken>
+        <Email>jonsonbrown@gmail.com</Email>
+        <FeedbackScore>870</FeedbackScore>
+        <PositiveFeedbackPercent>100.0</PositiveFeedbackPercent>
+        <FeedbackPrivate>false</FeedbackPrivate>
+        <FeedbackRatingStar>Purple</FeedbackRatingStar>
+        <IDVerified>false</IDVerified>
+        <eBayGoodStanding>true</eBayGoodStanding>
+        <NewUser>false</NewUser>
+        <RegistrationDate>1999-12-15T21:29:55.000Z</RegistrationDate>
+        <Site>US</Site>
+        <Status>Confirmed</Status>
+        <UserID>jonsonbrown</UserID>
+        <UserIDChanged>false</UserIDChanged>
+        <UserIDLastChanged>1999-12-15T21:29:55.000Z</UserIDLastChanged>
+        <VATStatus>NoVATTax</VATStatus>
+        <BuyerInfo>
+          <ShippingAddress>
+            <Name>Rod Brown</Name>
+            <Street1>3022 Catherine Hall Rd</Street1>
+            <CityName>Iva</CityName>
+            <StateOrProvince>SC</StateOrProvince>
+            <Country>US</Country>
+            <CountryName>??</CountryName>
+            <Phone>(864) 348-3228</Phone>
+            <PostalCode>29655-9762</PostalCode>
+            <AddressID>588075957011</AddressID>
+            <AddressOwner>eBay</AddressOwner>
+            <AddressUsage>DefaultShipping</AddressUsage>
+          </ShippingAddress>
+        </BuyerInfo>
+        <UserAnonymized>false</UserAnonymized>
+        <StaticAlias>jonson_dxsb5849ubog@members.ebay.com</StaticAlias>
+        <UserFirstName>Rod</UserFirstName>
+        <UserLastName>Brown</UserLastName>
+      </Buyer>
+      <ShippingDetails>
+        <ChangePaymentInstructions>true</ChangePaymentInstructions>
+        <PaymentEdited>true</PaymentEdited>
+        <SalesTax>
+          <SalesTaxPercent>0.0</SalesTaxPercent>
+          <ShippingIncludedInTax>false</ShippingIncludedInTax>
+          <SalesTaxAmount currencyID="USD">0.0</SalesTaxAmount>
+        </SalesTax>
+        <ShippingServiceOptions>
+          <ShippingService>ShippingMethodStandard</ShippingService>
+          <ShippingServiceCost currencyID="USD">0.0</ShippingServiceCost>
+          <ShippingServiceAdditionalCost currencyID="USD">0.0</ShippingServiceAdditionalCost>
+          <ShippingServicePriority>1</ShippingServicePriority>
+          <ExpeditedService>false</ExpeditedService>
+          <ShippingTimeMin>1</ShippingTimeMin>
+          <ShippingTimeMax>5</ShippingTimeMax>
+        </ShippingServiceOptions>
+        <ShippingServiceOptions>
+          <ShippingService>ShippingMethodExpress</ShippingService>
+          <ShippingServiceCost currencyID="USD">5.0</ShippingServiceCost>
+          <ShippingServiceAdditionalCost currencyID="USD">5.0</ShippingServiceAdditionalCost>
+          <ShippingServicePriority>2</ShippingServicePriority>
+          <ExpeditedService>false</ExpeditedService>
+          <ShippingTimeMin>1</ShippingTimeMin>
+          <ShippingTimeMax>3</ShippingTimeMax>
+        </ShippingServiceOptions>
+        <ShippingType>Flat</ShippingType>
+        <SellingManagerSalesRecordNumber>90708</SellingManagerSalesRecordNumber>
+        <ThirdPartyCheckout>false</ThirdPartyCheckout>
+        <TaxTable />
+        <ExcludeShipToLocation>Alaska/Hawaii</ExcludeShipToLocation>
+        <ExcludeShipToLocation>APO/FPO</ExcludeShipToLocation>
+        <ExcludeShipToLocation>US Protectorates</ExcludeShipToLocation>
+        <ExcludeShipToLocation>Africa</ExcludeShipToLocation>
+        <ExcludeShipToLocation>Asia</ExcludeShipToLocation>
+        <ExcludeShipToLocation>Central America and Caribbean</ExcludeShipToLocation>
+        <ExcludeShipToLocation>Europe</ExcludeShipToLocation>
+        <ExcludeShipToLocation>Middle East</ExcludeShipToLocation>
+        <ExcludeShipToLocation>North America</ExcludeShipToLocation>
+        <ExcludeShipToLocation>Oceania</ExcludeShipToLocation>
+        <ExcludeShipToLocation>Southeast Asia</ExcludeShipToLocation>
+        <ExcludeShipToLocation>South America</ExcludeShipToLocation>
+        <ExcludeShipToLocation>PO Box</ExcludeShipToLocation>
+      </ShippingDetails>
+      <ConvertedAmountPaid currencyID="HKD">94.02</ConvertedAmountPaid>
+      <ConvertedTransactionPrice currencyID="HKD">94.02</ConvertedTransactionPrice>
+      <CreatedDate>2018-06-30T03:51:27.000Z</CreatedDate>
+      <DepositType>None</DepositType>
+      <QuantityPurchased>1</QuantityPurchased>
+      <Status>
+        <eBayPaymentStatus>NoPaymentFailure</eBayPaymentStatus>
+        <CheckoutStatus>CheckoutComplete</CheckoutStatus>
+        <LastTimeModified>2018-06-30T03:51:28.000Z</LastTimeModified>
+        <PaymentMethodUsed>PayPal</PaymentMethodUsed>
+        <CompleteStatus>Complete</CompleteStatus>
+        <BuyerSelectedShipping>true</BuyerSelectedShipping>
+        <PaymentHoldStatus>None</PaymentHoldStatus>
         <IntegratedMerchantCreditCardEnabled>false</IntegratedMerchantCreditCardEnabled>
-        <ConditionID>1000</ConditionID>
-        <ConditionDisplayName>New</ConditionDisplayName>
-      </Item>
-      <TransactionArray>
-        <Transaction>
-          <AmountPaid currencyID="USD">14.26</AmountPaid>
-          <AdjustmentAmount currencyID="USD">0.0</AdjustmentAmount>
-          <ConvertedAdjustmentAmount currencyID="USD">0.0</ConvertedAdjustmentAmount>
-          <Buyer>
-            <AboutMePage>false</AboutMePage>
-            <EIASToken>nY+sHZ2PrBmdj6wVnY+sEZ2PrA2dj6AEl4KoCZaBow2dj6x9nY+seQ==</EIASToken>
-            <Email>jessemlee@bellsouth.net</Email>
-            <FeedbackScore>32</FeedbackScore>
-            <PositiveFeedbackPercent>100.0</PositiveFeedbackPercent>
-            <FeedbackPrivate>false</FeedbackPrivate>
-            <FeedbackRatingStar>Yellow</FeedbackRatingStar>
-            <IDVerified>false</IDVerified>
-            <eBayGoodStanding>true</eBayGoodStanding>
-            <NewUser>false</NewUser>
-            <RegistrationDate>2011-07-26T05:23:07.000Z</RegistrationDate>
-            <Site>US</Site>
-            <Status>Confirmed</Status>
-            <UserID>voodooracerx</UserID>
-            <UserIDChanged>false</UserIDChanged>
-            <UserIDLastChanged>2011-07-26T05:23:06.000Z</UserIDLastChanged>
-            <VATStatus>NoVATTax</VATStatus>
-            <BuyerInfo>
-              <ShippingAddress>
-                <Name>JESSE LEE</Name>
-                <Street1>104 Catherine Ct</Street1>
-                <CityName>La Place</CityName>
-                <StateOrProvince>LA</StateOrProvince>
-                <Country>US</Country>
-                <CountryName>United States</CountryName>
-                <Phone>(504) 329-1825</Phone>
-                <PostalCode>70068-4179</PostalCode>
-                <AddressID>3563716890023</AddressID>
-                <AddressOwner>eBay</AddressOwner>
-                <AddressUsage>DefaultShipping</AddressUsage>
-              </ShippingAddress>
-            </BuyerInfo>
-            <UserAnonymized>false</UserAnonymized>
-            <UserFirstName>JESSE</UserFirstName>
-            <UserLastName>LEE</UserLastName>
-          </Buyer>
-          <ShippingDetails>
-            <ChangePaymentInstructions>true</ChangePaymentInstructions>
-            <PaymentEdited>true</PaymentEdited>
-            <SalesTax>
-              <SalesTaxPercent>0.0</SalesTaxPercent>
-              <ShippingIncludedInTax>false</ShippingIncludedInTax>
-              <SalesTaxAmount currencyID="USD">0.0</SalesTaxAmount>
-            </SalesTax>
-            <ShippingServiceOptions>
-              <ShippingService>ShippingMethodStandard</ShippingService>
-              <ShippingServiceCost currencyID="USD">0.0</ShippingServiceCost>
-              <ShippingServiceAdditionalCost currencyID="USD">0.0</ShippingServiceAdditionalCost>
-              <ShippingServicePriority>1</ShippingServicePriority>
-              <ExpeditedService>false</ExpeditedService>
-              <ShippingTimeMin>1</ShippingTimeMin>
-              <ShippingTimeMax>5</ShippingTimeMax>
-            </ShippingServiceOptions>
-            <ShippingServiceOptions>
-              <ShippingService>ShippingMethodExpress</ShippingService>
-              <ShippingServiceCost currencyID="USD">5.0</ShippingServiceCost>
-              <ShippingServiceAdditionalCost currencyID="USD">3.0</ShippingServiceAdditionalCost>
-              <ShippingServicePriority>2</ShippingServicePriority>
-              <ExpeditedService>false</ExpeditedService>
-              <ShippingTimeMin>1</ShippingTimeMin>
-              <ShippingTimeMax>3</ShippingTimeMax>
-            </ShippingServiceOptions>
-            <ShippingType>Flat</ShippingType>
-            <SellingManagerSalesRecordNumber>49009</SellingManagerSalesRecordNumber>
-            <ThirdPartyCheckout>false</ThirdPartyCheckout>
-            <TaxTable/>
-            <ExcludeShipToLocation>APO/FPO</ExcludeShipToLocation>
-            <ExcludeShipToLocation>Alaska/Hawaii</ExcludeShipToLocation>
-            <ExcludeShipToLocation>US Protectorates</ExcludeShipToLocation>
-            <ExcludeShipToLocation>Africa</ExcludeShipToLocation>
-            <ExcludeShipToLocation>Asia</ExcludeShipToLocation>
-            <ExcludeShipToLocation>Central America and Caribbean</ExcludeShipToLocation>
-            <ExcludeShipToLocation>Europe</ExcludeShipToLocation>
-            <ExcludeShipToLocation>Middle East</ExcludeShipToLocation>
-            <ExcludeShipToLocation>North America</ExcludeShipToLocation>
-            <ExcludeShipToLocation>Oceania</ExcludeShipToLocation>
-            <ExcludeShipToLocation>Southeast Asia</ExcludeShipToLocation>
-            <ExcludeShipToLocation>South America</ExcludeShipToLocation>
-            <ExcludeShipToLocation>PO Box</ExcludeShipToLocation>
-          </ShippingDetails>
-          <ConvertedAmountPaid currencyID="USD">14.26</ConvertedAmountPaid>
-          <ConvertedTransactionPrice currencyID="USD">14.26</ConvertedTransactionPrice>
-          <CreatedDate>2018-05-17T21:52:45.000Z</CreatedDate>
-          <DepositType>None</DepositType>
-          <QuantityPurchased>1</QuantityPurchased>
-          <Status>
-            <eBayPaymentStatus>NoPaymentFailure</eBayPaymentStatus>
-            <CheckoutStatus>CheckoutComplete</CheckoutStatus>
-            <LastTimeModified>2018-05-17T21:52:46.000Z</LastTimeModified>
-            <PaymentMethodUsed>PayPal</PaymentMethodUsed>
-            <CompleteStatus>Complete</CompleteStatus>
-            <BuyerSelectedShipping>true</BuyerSelectedShipping>
-            <PaymentHoldStatus>None</PaymentHoldStatus>
-            <IntegratedMerchantCreditCardEnabled>false</IntegratedMerchantCreditCardEnabled>
-            <InquiryStatus>NotApplicable</InquiryStatus>
-            <ReturnStatus>NotApplicable</ReturnStatus>
-            <PaymentInstrument>PayPal</PaymentInstrument>
-          </Status>
-          <TransactionID>1992371924017</TransactionID>
-          <TransactionPrice currencyID="USD">14.26</TransactionPrice>
-          <BestOfferSale>false</BestOfferSale>
-          <ExternalTransaction>
-            <ExternalTransactionID>25A141390C571374B</ExternalTransactionID>
-            <ExternalTransactionTime>2018-05-17T21:52:43.000Z</ExternalTransactionTime>
-            <FeeOrCreditAmount currencyID="USD">0.76</FeeOrCreditAmount>
-            <PaymentOrRefundAmount currencyID="USD">14.26</PaymentOrRefundAmount>
-            <ExternalTransactionStatus>Succeeded</ExternalTransactionStatus>
-          </ExternalTransaction>
-          <ShippingServiceSelected>
-            <ShippingService>ShippingMethodStandard</ShippingService>
-            <ShippingServiceCost currencyID="USD">0.0</ShippingServiceCost>
-            <ShippingPackageInfo>
-              <EstimatedDeliveryTimeMin>2018-05-29T07:00:00.000Z</EstimatedDeliveryTimeMin>
-              <EstimatedDeliveryTimeMax>2018-05-29T07:00:00.000Z</EstimatedDeliveryTimeMax>
-            </ShippingPackageInfo>
-          </ShippingServiceSelected>
-          <PaidTime>2018-05-17T21:52:46.000Z</PaidTime>
-          <ContainingOrder>
-            <OrderID>272969071343-1992371924017</OrderID>
-            <OrderStatus>Completed</OrderStatus>
-            <CancelStatus>NotApplicable</CancelStatus>
-            <ExtendedOrderID>272969071343-1992371924017!80000172372112</ExtendedOrderID>
-            <ContainseBayPlusTransaction>false</ContainseBayPlusTransaction>
-          </ContainingOrder>
-          <FinalValueFee currencyID="USD">1.16</FinalValueFee>
-          <TransactionSiteID>US</TransactionSiteID>
-          <Platform>eBay</Platform>
-          <PayPalEmailAddress>shoulvxu@gmail.com</PayPalEmailAddress>
-          <BuyerGuaranteePrice currencyID="USD">20000.0</BuyerGuaranteePrice>
-          <ActualShippingCost currencyID="USD">0.0</ActualShippingCost>
-          <ActualHandlingCost currencyID="USD">0.0</ActualHandlingCost>
-          <OrderLineItemID>272969071343-1992371924017</OrderLineItemID>
-          <IsMultiLegShipping>false</IsMultiLegShipping>
-          <IntangibleItem>false</IntangibleItem>
-          <MonetaryDetails>
-            <Payments>
-              <Payment>
-                <PaymentStatus>Succeeded</PaymentStatus>
-                <Payer type="eBayUser">voodooracerx</Payer>
-                <Payee type="eBayUser">notesonboard</Payee>
-                <PaymentTime>2018-05-17T21:52:43.000Z</PaymentTime>
-                <PaymentAmount currencyID="USD">14.26</PaymentAmount>
-                <ReferenceID type="ExternalTransactionID">25A141390C571374B</ReferenceID>
-                <FeeOrCreditAmount currencyID="USD">0.76</FeeOrCreditAmount>
-              </Payment>
-            </Payments>
-          </MonetaryDetails>
-          <ExtendedOrderID>272969071343-1992371924017!80000172372112</ExtendedOrderID>
-          <eBayPlusTransaction>false</eBayPlusTransaction>
-          <GuaranteedShipping>false</GuaranteedShipping>
-          <GuaranteedDelivery>false</GuaranteedDelivery>
-        </Transaction>
-      </TransactionArray>
-      <PayPalPreferred>false</PayPalPreferred>
-    </GetItemTransactionsResponse>
+        <InquiryStatus>NotApplicable</InquiryStatus>
+        <ReturnStatus>NotApplicable</ReturnStatus>
+        <PaymentInstrument>PayPal</PaymentInstrument>
+      </Status>
+      <TransactionID>1836036328008</TransactionID>
+      <TransactionPrice currencyID="USD">11.98</TransactionPrice>
+      <BestOfferSale>false</BestOfferSale>
+      <ExternalTransaction>
+        <ExternalTransactionID>8CP37476GE5745532</ExternalTransactionID>
+        <ExternalTransactionTime>2018-06-30T03:51:26.000Z</ExternalTransactionTime>
+        <FeeOrCreditAmount currencyID="USD">0.65</FeeOrCreditAmount>
+        <PaymentOrRefundAmount currencyID="USD">11.98</PaymentOrRefundAmount>
+        <ExternalTransactionStatus>Succeeded</ExternalTransactionStatus>
+      </ExternalTransaction>
+      <ShippingServiceSelected>
+        <ShippingService>ShippingMethodStandard</ShippingService>
+        <ShippingServiceCost currencyID="USD">0.0</ShippingServiceCost>
+        <ShippingPackageInfo>
+          <EstimatedDeliveryTimeMin>2018-07-11T07:00:00.000Z</EstimatedDeliveryTimeMin>
+          <EstimatedDeliveryTimeMax>2018-07-11T07:00:00.000Z</EstimatedDeliveryTimeMax>
+        </ShippingPackageInfo>
+      </ShippingServiceSelected>
+      <BuyerMessage>xwhql9966@sina.com</BuyerMessage>
+      <PaidTime>2018-06-30T03:51:28.000Z</PaidTime>
+      <ContainingOrder>
+        <OrderID>182639230997-1836036328008</OrderID>
+        <OrderStatus>Completed</OrderStatus>
+        <CancelStatus>NotApplicable</CancelStatus>
+        <ExtendedOrderID>182639230997-1836036328008!100000190925291</ExtendedOrderID>
+        <ContainseBayPlusTransaction>false</ContainseBayPlusTransaction>
+      </ContainingOrder>
+      <FinalValueFee currencyID="USD">1.1</FinalValueFee>
+      <TransactionSiteID>US</TransactionSiteID>
+      <Platform>eBay</Platform>
+      <PayPalEmailAddress>841660424@qq.com</PayPalEmailAddress>
+      <BuyerGuaranteePrice currencyID="USD">20000.0</BuyerGuaranteePrice>
+      <Variation>
+        <SKU>09FTF0001ABL</SKU>
+        <VariationSpecifics>
+          <NameValueList>
+            <Name>Color</Name>
+            <Value>Blue</Value>
+          </NameValueList>
+        </VariationSpecifics>
+        <VariationTitle>New Portable Mini Cooling Fan Desk Travel USB Battery Powered Air Conditioner [Blue]</VariationTitle>
+        <VariationViewItemURL>http://cgi.ebay.com/ws/eBayISAPI.dll?ViewItem&amp;item=182639230997&amp;vti=Color%09Blue</VariationViewItemURL>
+      </Variation>
+      <ActualShippingCost currencyID="USD">0.0</ActualShippingCost>
+      <ActualHandlingCost currencyID="USD">0.0</ActualHandlingCost>
+      <OrderLineItemID>182639230997-1836036328008</OrderLineItemID>
+      <IsMultiLegShipping>false</IsMultiLegShipping>
+      <IntangibleItem>false</IntangibleItem>
+      <MonetaryDetails>
+        <Payments>
+          <Payment>
+            <PaymentStatus>Succeeded</PaymentStatus>
+            <Payer type="eBayUser">jonsonbrown</Payer>
+            <Payee type="eBayUser">skyfairy156</Payee>
+            <PaymentTime>2018-06-30T03:51:26.000Z</PaymentTime>
+            <PaymentAmount currencyID="USD">11.98</PaymentAmount>
+            <ReferenceID type="ExternalTransactionID">8CP37476GE5745532</ReferenceID>
+            <FeeOrCreditAmount currencyID="USD">0.65</FeeOrCreditAmount>
+          </Payment>
+        </Payments>
+      </MonetaryDetails>
+      <ExtendedOrderID>182639230997-1836036328008!100000190925291</ExtendedOrderID>
+      <eBayPlusTransaction>false</eBayPlusTransaction>
+      <GuaranteedShipping>false</GuaranteedShipping>
+    </Transaction>
+  </TransactionArray>
+  <PayPalPreferred>false</PayPalPreferred>
+</GetItemTransactionsResponse>
   </soapenv:Body>
 </soapenv:Envelope>
 

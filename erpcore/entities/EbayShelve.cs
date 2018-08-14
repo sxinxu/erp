@@ -14,6 +14,6 @@ namespace erpcore.entities
         public string ShipmentId { get; set; }
         public string BoxId { get; set; }
         public int? Quantity { get; set; }
-        public string Modifieddate { get; set; }
+        public string Modifiedtime { get; set; }
     }
 }

@@ -11,8 +11,8 @@ namespace erpcoretests
         [Fact]
         public void TestGetInventory()
         {
-            AmazonService service = new AmazonService("server=localhost;port=3306;user=root;password=EFDnpz8PeJ758VeN;database=v3-all");
-            service.GetInventory("gplusmotor2014@gmail.com");
+            //AmazonService service = new AmazonService("server=localhost;port=3306;user=root;password=EFDnpz8PeJ758VeN;database=v3-all");
+            //service.GetInventory("gplusmotor2014@gmail.com");
         }
 
         [Fact]
@@ -20,7 +20,7 @@ namespace erpcoretests
         {
             Dictionary<string, int> quantities = new Dictionary<string, int>();
             quantities["01SHC1004CBL"] = 11;
-            AmazonService service = new AmazonService("server=localhost;port=3306;user=root;password=EFDnpz8PeJ758VeN;database=v3-all");
+            AmazonService service = new AmazonService(null, null, "server=localhost;port=3306;user=root;password=EFDnpz8PeJ758VeN;database=v3-all");
             service.UpdateInventory("gplusmotor2014@gmail.com", quantities);
         }
     }

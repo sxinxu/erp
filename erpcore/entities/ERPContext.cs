@@ -4286,8 +4286,8 @@ namespace erpcore.entities
                     .HasColumnName("boxId")
                     .HasMaxLength(45);
 
-                entity.Property(e => e.Modifieddate)
-                    .HasColumnName("modifieddate")
+                entity.Property(e => e.Modifiedtime)
+                    .HasColumnName("modifiedtime")
                     .HasMaxLength(45);
 
                 entity.Property(e => e.Quantity)

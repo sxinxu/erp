@@ -13,5 +13,6 @@ namespace erpcore
     {
         public String Company { get; set; }
         public String ConnectionString { get; set; }
+        public int[] StoreIds { get; set; }
     }
 }

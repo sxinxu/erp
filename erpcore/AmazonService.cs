@@ -17,6 +17,11 @@ namespace erpcore
 {
     public class AmazonService : IAmazonService
     {
+        private static int m_maxRetry = 4;
+
+        private IPlatformServiceFactory m_platformServiceFactory;
+        private string m_company;
+
         // Developer AWS access key
         string accessKey = "AKIAI4WI6RBTNXZXI6NQ";
 
@@ -43,8 +48,10 @@ namespace erpcore
 
         private string m_connectionString;
 
-        public AmazonService( string connectionString)
+        public AmazonService(PlatformServiceFactory platformServiceFactory, string company, string connectionString)
         {
+            m_platformServiceFactory = platformServiceFactory;
+            m_company = company;
             m_connectionString = connectionString;
             using (ERPContext context = new ERPContext(m_connectionString))
             {
@@ -65,130 +72,208 @@ namespace erpcore
             mwsConfig.ServiceURL = serviceURL;
             mwsClient = new MarketplaceWebServiceClient(accessKey, secretKey, appName, appVersion, mwsConfig);
         }
+        
 
-        public bool isAmazonAccount(string accountName)
+        public List<string> GetAccountNames()
         {
-            if( sellerIdDictionary.ContainsKey(accountName))
-            {
-                return true;
-            }
-            else
-            {
-                return false;
-            }
+            List<string> accountNames = new List<string>();
+            accountNames.AddRange(sellerIdDictionary.Keys);
+            return accountNames;
         }
 
-        public void ListOrders( string accountName, DateTime createdAfter, DateTime createdBefore )
+        public void SyncOrders(ERPContext context, string accountName, DateTime createdAfter, DateTime createdBefore, List<EbayOrderdetail> orderDetails)
         {
-            using (ERPContext context = new ERPContext(m_connectionString))
+            if( !sellerIdDictionary.ContainsKey(accountName))
             {
+                m_logger.Error(accountName + " does not exist.");
+                return;
+            }
+            m_logger.Info("Sync orders of " + accountName);
+            try
+            {
+                ListOrdersRequest request = new ListOrdersRequest();
+                request.SellerId = sellerIdDictionary[accountName];
+                request.MWSAuthToken = mwsAuthTokenDictionary[accountName];
+                request.LastUpdatedAfter = createdAfter;
+                request.LastUpdatedBefore = createdBefore;
+                request.OrderStatus = new List<string>();
+                request.OrderStatus.Add("Unshipped");
+                request.OrderStatus.Add("PartiallyShipped");
+                List<string> marketplaceIds = new List<string>();
+                marketplaceIds.Add(marketplaceId);
+                request.MarketplaceId = marketplaceIds;
 
-                try
+                int retryCount = 0;
+                ListOrdersResponse response = null;
+                while( retryCount <= m_maxRetry && response == null )
                 {
-                    ListOrdersRequest request = new ListOrdersRequest();
-                    request.SellerId = sellerIdDictionary[accountName];
-                    request.MWSAuthToken = mwsAuthTokenDictionary[accountName];
-                    request.LastUpdatedAfter = createdAfter;
-                    request.LastUpdatedBefore = createdBefore;
-                    request.OrderStatus = new List<string>();
-                    request.OrderStatus.Add("Unshipped");
-                    request.OrderStatus.Add("PartiallyShipped");
-                    List<string> marketplaceIds = new List<string>();
-                    marketplaceIds.Add(marketplaceId);
-                    request.MarketplaceId = marketplaceIds;
-                    ListOrdersResponse response = client.ListOrders(request);
-
-                    foreach (Order order in response.ListOrdersResult.Orders)
+                    if( retryCount > 0)
                     {
+                        Thread.Sleep(TimeSpan.FromSeconds(retryCount * 2));
+                    }
+                    try
+                    {
+                        response = client.ListOrders(request);
+                    }
+                    catch(Exception e)
+                    {
+                        if( retryCount > m_maxRetry)
+                        {
+                            throw e;
+                        }
+                        retryCount++;
+                    }
+                }
+
+                ProcessOrders(context, accountName, response.ListOrdersResult.Orders, orderDetails);
+                string nextToken = response.ListOrdersResult.NextToken;
+                while ( nextToken != null )
+                {
+                    ListOrdersByNextTokenRequest request1 = new ListOrdersByNextTokenRequest();
+                    request1.SellerId = sellerIdDictionary[accountName];
+                    request1.MWSAuthToken = mwsAuthTokenDictionary[accountName];
+                    request1.NextToken = nextToken;
+
+                    retryCount = 0;
+                    ListOrdersByNextTokenResponse response1 = null;
+                    while (retryCount <= m_maxRetry && response == null)
+                    {
+                        if (retryCount > 0)
+                        {
+                            Thread.Sleep(TimeSpan.FromSeconds(retryCount * 2));
+                        }
                         try
                         {
-                            if (order.OrderStatus == "Unshipped")
-                            {
-                                var q = from ebayOrder in context.EbayOrder
-                                        where ebayOrder.EbayOrdersn == order.AmazonOrderId
-                                        select ebayOrder;
-                                if (q.Count() == 0)
-                                {
+                            response1 = client.ListOrdersByNextToken(request1);
 
-                                    EbayOrder ebayOrder = new EbayOrder();
-                                    ebayOrder.EbayOrdersn = order.AmazonOrderId;
-                                    ebayOrder.Recordnumber = order.AmazonOrderId;
-                                    ebayOrder.EbayCreatedtime = Convert.ToInt32(order.PurchaseDate.ToUniversalTime().Subtract(new DateTime(1970, 1, 1)).TotalSeconds);
-                                    ebayOrder.EbayPaidtime = ebayOrder.EbayCreatedtime.ToString();
-                                    ebayOrder.EbayUserid = order.BuyerName;
-                                    ebayOrder.EbayUsername = order.BuyerName;
-                                    ebayOrder.EbayUsermail = order.BuyerEmail;
-                                    ebayOrder.EbayPhone = order.ShippingAddress.Phone;
-                                    ebayOrder.EbayStreet = order.ShippingAddress.AddressLine1;
-                                    ebayOrder.EbayStreet1 = order.ShippingAddress.AddressLine2;
-                                    ebayOrder.EbayCity = order.ShippingAddress.City;
-                                    ebayOrder.EbayState = order.ShippingAddress.StateOrRegion;
-                                    ebayOrder.EbayCouny = order.ShippingAddress.CountryCode;
-                                    if (ebayOrder.EbayCouny == "US")
-                                    {
-                                        ebayOrder.EbayCountryname = "United States";
-                                    }
-                                    ebayOrder.EbayPostcode = order.ShippingAddress.PostalCode;
-                                    ebayOrder.EbayCurrency = order.OrderTotal.CurrencyCode;
-                                    ebayOrder.EbayTotal = Convert.ToDouble(order.OrderTotal.Amount);
-                                    ebayOrder.EbayStatus = 1;
-                                    ebayOrder.EbayUser = "vipadmin";
-                                    ebayOrder.EbayAccount = accountName;
-                                    ebayOrder.Status = "0";
-                                    ebayOrder.EbayCarrier2 = "";
-                                    ebayOrder.EbayTracknumber2 = "";
-                                    ebayOrder.IsYichang = "0";
-                                    ebayOrder.Ishide = 0;
-                                    ebayOrder.EbayCombine = "0";
-                                    context.EbayOrder.Add(ebayOrder);
-
-                                    ListOrderItemsRequest listOrderItemsRequest = new ListOrderItemsRequest();
-                                    listOrderItemsRequest.SellerId = sellerIdDictionary[accountName];
-                                    listOrderItemsRequest.MWSAuthToken = mwsAuthTokenDictionary[accountName];
-                                    listOrderItemsRequest.AmazonOrderId = order.AmazonOrderId;
-                                    ListOrderItemsResponse itemResponse = client.ListOrderItems(listOrderItemsRequest);
-                                    int i = 0;
-                                    foreach (OrderItem orderItem in itemResponse.ListOrderItemsResult.OrderItems)
-                                    {
-                                        EbayOrderdetail orderDetail = new EbayOrderdetail();
-                                        orderDetail.EbayOrdersn = order.AmazonOrderId;
-                                        if (i > 0)
-                                        {
-                                            orderDetail.Recordnumber = order.AmazonOrderId + i.ToString();
-                                        }
-                                        else
-                                        {
-                                            orderDetail.Recordnumber = order.AmazonOrderId;
-                                        }
-                                        orderDetail.EbayItemid = orderItem.OrderItemId;
-                                        orderDetail.EbayItemtitle = orderItem.Title;
-                                        orderDetail.Sku = orderItem.SellerSKU;
-                                        if (orderItem.ItemPrice != null)
-                                        {
-                                            orderDetail.EbayItemprice = (Convert.ToDouble(orderItem.ItemPrice.Amount) / Convert.ToInt32(orderItem.QuantityOrdered)).ToString();
-                                        }
-                                        else
-                                        {
-                                            orderDetail.EbayItemprice = "0.0";
-                                        }
-                                        orderDetail.EbayAmount = orderItem.QuantityOrdered.ToString();
-                                        orderDetail.EbayUser = "vipadmin";
-                                        orderDetail.Shipingfee = orderItem.ShippingPrice.Amount;
-                                        orderDetail.EbayAccount = accountName;
-                                        orderDetail.Istrue = 1;
-                                        context.EbayOrderdetail.Add(orderDetail);
-                                        Console.Out.Write(orderItem.SellerSKU);
-                                        Console.Out.Write(";");
-                                        Console.Out.Write(orderItem.QuantityOrdered.ToString());
-                                        Console.Out.Write(",");
-                                        i++;
-                                    }
-                                }
-                            }
                         }
                         catch (Exception e)
                         {
+                            if (retryCount > m_maxRetry)
+                            {
+                                throw e;
+                            }
+                            retryCount++;
+                        }
+                    }
 
+                    ProcessOrders(context, accountName, response1.ListOrdersByNextTokenResult.Orders, orderDetails);
+                    nextToken = response1.ListOrdersByNextTokenResult.NextToken;
+                }
+            }
+            catch (Exception e)
+            {
+                m_logger.Error(e.Message);
+            }
+        }
+
+        private void ProcessOrders( ERPContext context, string accountName, List<Order> orders, List<EbayOrderdetail> orderDetails )
+        {
+            foreach (Order order in orders)
+            {
+                try
+                {
+                    if (order.OrderStatus == "Unshipped" || order.OrderStatus == "PartiallyShipped")
+                    {
+                        var q = from ebayOrder in context.EbayOrder
+                                where ebayOrder.EbayOrdersn == order.AmazonOrderId
+                                select ebayOrder;
+                        if (q.Count() == 0)
+                        {
+                            EbayOrder ebayOrder = new EbayOrder();
+                            ebayOrder.EbayOrdersn = order.AmazonOrderId;
+                            ebayOrder.Recordnumber = order.AmazonOrderId;
+                            ebayOrder.EbayCreatedtime = Convert.ToInt32(order.PurchaseDate.ToUniversalTime().Subtract(new DateTime(1970, 1, 1)).TotalSeconds);
+                            ebayOrder.EbayPaidtime = ebayOrder.EbayCreatedtime.ToString();
+                            ebayOrder.EbayUserid = order.BuyerName;
+                            ebayOrder.EbayUsername = order.ShippingAddress.Name;
+                            ebayOrder.EbayUsermail = order.BuyerEmail;
+                            ebayOrder.EbayPhone = order.ShippingAddress.Phone;
+                            ebayOrder.EbayStreet = order.ShippingAddress.AddressLine1;
+                            ebayOrder.EbayStreet1 = order.ShippingAddress.AddressLine2;
+                            ebayOrder.EbayCity = order.ShippingAddress.City;
+                            ebayOrder.EbayState = order.ShippingAddress.StateOrRegion;
+                            ebayOrder.EbayCouny = order.ShippingAddress.CountryCode;
+                            if (ebayOrder.EbayCouny == "US")
+                            {
+                                ebayOrder.EbayCountryname = "United States";
+                            }
+                            ebayOrder.EbayPostcode = order.ShippingAddress.PostalCode;
+                            ebayOrder.EbayCurrency = order.OrderTotal.CurrencyCode;
+                            ebayOrder.EbayTotal = Convert.ToDouble(order.OrderTotal.Amount);
+                            ebayOrder.EbayStatus = 1;
+                            ebayOrder.EbayUser = "vipadmin";
+                            ebayOrder.EbayAccount = accountName;
+                            ebayOrder.Status = "0";
+                            ebayOrder.EbayCarrier2 = "";
+                            ebayOrder.EbayTracknumber2 = "";
+                            ebayOrder.IsYichang = "0";
+                            ebayOrder.Ishide = 0;
+                            ebayOrder.EbayCombine = "0";
+                            m_logger.Info("Proccess Amazon order " + ebayOrder.EbayUsername);
+
+                            ListOrderItemsRequest listOrderItemsRequest = new ListOrderItemsRequest();
+                            listOrderItemsRequest.SellerId = sellerIdDictionary[accountName];
+                            listOrderItemsRequest.MWSAuthToken = mwsAuthTokenDictionary[accountName];
+                            listOrderItemsRequest.AmazonOrderId = order.AmazonOrderId;
+
+                            int retryCount = 0;
+                            ListOrderItemsResponse itemResponse = null;
+                            while (retryCount <= m_maxRetry && itemResponse == null)
+                            {
+                                if (retryCount > 0)
+                                {
+                                    Thread.Sleep(TimeSpan.FromSeconds(retryCount * 2));
+                                }
+                                try
+                                {
+                                    itemResponse = client.ListOrderItems(listOrderItemsRequest);
+                                }
+                                catch (Exception e)
+                                {
+                                    if (retryCount >= m_maxRetry)
+                                    {
+                                        throw e;
+                                    }
+                                    retryCount++;
+                                }
+
+                            }
+                            int i = 0;
+                            foreach (OrderItem orderItem in itemResponse.ListOrderItemsResult.OrderItems)
+                            {
+                                EbayOrderdetail orderDetail = new EbayOrderdetail();
+                                orderDetail.EbayOrdersn = order.AmazonOrderId;
+                                if (i > 0)
+                                {
+                                    orderDetail.Recordnumber = order.AmazonOrderId + i.ToString();
+                                }
+                                else
+                                {
+                                    orderDetail.Recordnumber = order.AmazonOrderId;
+                                }
+                                orderDetail.EbayItemid = orderItem.OrderItemId;
+                                orderDetail.EbayItemtitle = orderItem.Title;
+                                orderDetail.Sku = orderItem.SellerSKU;
+                                if (orderItem.ItemPrice != null)
+                                {
+                                    orderDetail.EbayItemprice = (Convert.ToDouble(orderItem.ItemPrice.Amount) / Convert.ToInt32(orderItem.QuantityOrdered)).ToString();
+                                }
+                                else
+                                {
+                                    orderDetail.EbayItemprice = "0.0";
+                                }
+                                orderDetail.EbayAmount = orderItem.QuantityOrdered.ToString();
+                                orderDetail.EbayUser = "vipadmin";
+                                orderDetail.Shipingfee = orderItem.ShippingPrice.Amount;
+                                orderDetail.EbayAccount = accountName;
+                                orderDetail.Istrue = 1;
+                                context.EbayOrderdetail.Add(orderDetail);
+                                orderDetails.Add(orderDetail);
+                                m_logger.Info(orderItem.SellerSKU + "," + orderItem.QuantityOrdered.ToString());
+                                i++;
+                            }
+                            context.EbayOrder.Add(ebayOrder);
                         }
                     }
                 }
@@ -199,7 +284,59 @@ namespace erpcore
             }
         }
 
-        public async void UpdateInventory(string accountName, Dictionary<string,int> quantities)
+        public void UpdateListingQuantities(ERPContext context, string accountName, Dictionary<string, int> inventoryDictionary, Dictionary<string, Dictionary<string, int>> productCombineDictionary)
+        {
+            Dictionary<string, int> quantities = new Dictionary<string, int>();
+            var q = from amazonList in context.AmazonList
+                    where amazonList.AccountName == accountName
+                    select amazonList;
+            foreach( var row in q)
+            {
+                int oldQuantity = row.Quantity;
+                int warehouseQuantity = 0;
+                int newQuantity = 0;
+                bool update = m_platformServiceFactory.GetInventoryService(m_company).GetNewQuantity(inventoryDictionary, productCombineDictionary, row.SKU, 1, oldQuantity, out warehouseQuantity, out newQuantity);
+                m_logger.Info(accountName + ": " + row.SKU + " listing quantity: " + oldQuantity + " warehouse quantity: " + warehouseQuantity);
+                if (update)
+                {
+                    quantities[row.SKU] = newQuantity;
+                    row.Quantity = newQuantity;
+                    m_logger.Info(accountName + ": Quantity of " + row.SKU + " has been changed from " + oldQuantity + " to " + newQuantity);
+                }
+            }
+
+            if( quantities.Count() > 0 )
+            {
+                UpdateInventory(accountName, quantities);
+                context.SaveChanges();
+            }
+        }
+
+        public void UpdateListingQuantities( ERPContext context, string sku, int warehouseQuantity )
+        {
+            var q = from amazonList in context.AmazonList
+                    where amazonList.SKU == sku
+                    select amazonList;
+            foreach (var row in q)
+            {
+                Dictionary<string, int> quantities = new Dictionary<string, int>();
+                int oldQuantity = row.Quantity;
+                int newQuantity = 0;
+                bool update = m_platformServiceFactory.GetInventoryService(m_company).GetNewQuantity( sku, 1, oldQuantity, warehouseQuantity, out newQuantity);
+                m_logger.Info( row.AccountName + ": " + row.SKU + " listing quantity: " + oldQuantity + " warehouse quantity: " + warehouseQuantity);
+                if (update)
+                {
+                    quantities[row.SKU] = newQuantity;
+                    row.Quantity = newQuantity;
+                    m_logger.Info(row.AccountName + ": Quantity of " + row.SKU + " has been changed from " + oldQuantity + " to " + newQuantity);
+                    UpdateInventory(row.AccountName, quantities);
+                }
+            }
+
+            context.SaveChanges();
+        }
+
+        public void UpdateInventory(string accountName, Dictionary<string,int> quantities)
         {
             XNamespace xsi = XNamespace.Get("http://www.w3.org/2001/XMLSchema-instance");
             XElement root = new XElement("AmazonEnvelope",
@@ -221,7 +358,7 @@ namespace erpcore
                                 new XElement("FulfillmentLatency",1))));
                 messageId++;
             }
-            SubmitFeed(accountName, root);
+            //SubmitFeed(accountName, root);
         }
         
         public List<XElement> SubmitFeed( string accountName, XElement feed)
@@ -240,7 +377,26 @@ namespace erpcore
             request.FeedContent.Position = 0;
             request.ContentMD5 = MarketplaceWebServiceClient.CalculateContentMD5(request.FeedContent);
             request.FeedContent.Position = 0;
-            SubmitFeedResponse response = mwsClient.SubmitFeed(request);
+
+            int retryCount = 0;
+            SubmitFeedResponse response = null;
+            while (retryCount <= 4 && response == null)
+            {
+                Thread.Sleep(TimeSpan.FromMinutes(retryCount * 2));
+                try
+                {
+                    response = mwsClient.SubmitFeed(request);
+                }
+                catch(Exception e)
+                {
+                    if( retryCount >= 4)
+                    {
+                        throw e;
+                    }
+                    retryCount++;
+                }
+             }
+            
             memoryStream.Close();
             string feedSubmissionId = response.SubmitFeedResult.FeedSubmissionInfo.FeedSubmissionId;
 
@@ -269,7 +425,25 @@ namespace erpcore
 
                             MemoryStream stream = new MemoryStream();
                             feedSubmissionResultRequest.FeedSubmissionResult = stream;
-                            GetFeedSubmissionResultResponse feedSubmissionResultResponse = mwsClient.GetFeedSubmissionResult(feedSubmissionResultRequest);
+
+                            retryCount = 0;
+                            GetFeedSubmissionResultResponse feedSubmissionResultResponse = null;
+                            while(retryCount <= m_maxRetry && feedSubmissionResultResponse == null)
+                            {
+                                Thread.Sleep(TimeSpan.FromMinutes(retryCount * 2));
+                                try
+                                {
+                                    feedSubmissionResultResponse = mwsClient.GetFeedSubmissionResult(feedSubmissionResultRequest);
+                                }
+                                catch(MarketplaceWebServiceException e)
+                                {
+                                    if( e.ErrorCode == "RequestThrottled")
+                                    {
+                                        retryCount++;
+                                    }
+                                }
+                            }
+                            
 
                             XElement responseElement = XElement.Load(stream);
                             IEnumerable<XElement> messages = responseElement.Descendants("Message");
@@ -291,8 +465,17 @@ namespace erpcore
 
             return errors;
         }
+        
+        
+        public void RefreshListings(ERPContext context)
+        {
+            foreach (string acocuntName in sellerIdDictionary.Keys)
+            {
+                RefreshListings(context, acocuntName);
+            }
+        }
 
-        public void GetInventory( string accountName)
+        public void RefreshListings( ERPContext context, string accountName)
         {
             try
             {
@@ -322,7 +505,7 @@ namespace erpcore
                             if (info.ReportProcessingStatus == "_DONE_")
                             {
                                 done = true;
-                                GetInventoryReport(accountName, info.GeneratedReportId);
+                                GetInventoryReport( context, accountName, info.GeneratedReportId);
                             }
                         }
                     }
@@ -335,7 +518,7 @@ namespace erpcore
             }
         }
 
-        private void GetInventoryReport( string accountName, string reportId )
+        private void GetInventoryReport( ERPContext context, string accountName, string reportId )
         {
             GetReportRequest request = new GetReportRequest();
             request.MWSAuthToken = mwsAuthTokenDictionary[accountName];
@@ -344,75 +527,72 @@ namespace erpcore
             MemoryStream stream = new MemoryStream();
             request.Report = stream;
             GetReportResponse response = mwsClient.GetReport(request);
-            ParseInventoryReport(accountName, stream);
+            ParseInventoryReport( context, accountName, stream);
         }
 
-        private void ParseInventoryReport( string accountName, Stream stream )
+        private void ParseInventoryReport( ERPContext context, string accountName, Stream stream )
         {
-            using (ERPContext context = new ERPContext(m_connectionString))
+            Dictionary<string, AmazonList> skuDictionary = new Dictionary<string, AmazonList>();
+            var q = from amazonList in context.AmazonList
+                    where amazonList.AccountName == accountName
+                    select amazonList;
+            foreach(var row in q)
             {
-                Dictionary<string, AmazonList> skuDictionary = new Dictionary<string, AmazonList>();
-                var q = from amazonList in context.AmazonList
-                        where amazonList.AccountName == accountName
-                        select amazonList;
-                foreach(var row in q)
+                skuDictionary[row.SKU] = row;
+            }
+            StreamReader reader = new StreamReader(stream);
+            string s = null;
+            reader.ReadLine();
+            while ((s = reader.ReadLine()) != null)
+            {
+                string[] values = s.Split('\t');
+                if (values.Length == 4)
                 {
-                    skuDictionary[row.SKU] = row;
-                }
-                StreamReader reader = new StreamReader(stream);
-                string s = null;
-                reader.ReadLine();
-                while ((s = reader.ReadLine()) != null)
-                {
-                    string[] values = s.Split('\t');
-                    if (values.Length == 4)
+                    string sku = values[0];
+                    string asin = values[1];
+                    decimal price = 0;
+                    bool success = decimal.TryParse(values[2], out price);
+                    if( !success)
                     {
-                        string sku = values[0];
-                        string asin = values[1];
-                        decimal price = 0;
-                        bool success = decimal.TryParse(values[2], out price);
-                        if( !success)
-                        {
-                            m_logger.Error("Wrong price. " + s);
-                            continue;
-                        }
-                        int quantity = 0;
-                        success = int.TryParse(values[3], out quantity);
-                        if (!success)
-                        {
-                            m_logger.Error("Wrong quantity. " + s);
-                            continue;
-                        }
+                        m_logger.Error("Wrong price. " + s);
+                        continue;
+                    }
+                    int quantity = 0;
+                    success = int.TryParse(values[3], out quantity);
+                    if (!success)
+                    {
+                        m_logger.Error("Wrong quantity. " + s);
+                        continue;
+                    }
                         
-                        AmazonList list = null;
-                        if( skuDictionary.ContainsKey(sku) )
-                        {
-                            list = skuDictionary[sku];
-                            list.ASIN = asin;
-                            list.Price = price;
-                            list.Quantity = quantity;
-                            skuDictionary.Remove(sku);
-                        }
-                        else
-                        {
-                            list = new AmazonList();
-                            list.AccountName = accountName;
-                            list.SKU = sku;
-                            list.ASIN = asin;
-                            list.Price = price;
-                            list.Quantity = quantity;
-                            context.AmazonList.Add(list);
-                        }
+                    AmazonList list = null;
+                    if( skuDictionary.ContainsKey(sku) )
+                    {
+                        list = skuDictionary[sku];
+                        list.ASIN = asin;
+                        list.Price = price;
+                        list.Quantity = quantity;
+                        skuDictionary.Remove(sku);
+                    }
+                    else
+                    {
+                        list = new AmazonList();
+                        list.AccountName = accountName;
+                        list.SKU = sku;
+                        list.ASIN = asin;
+                        list.Price = price;
+                        list.Quantity = quantity;
+                        context.AmazonList.Add(list);
                     }
                 }
-                reader.Close();
-
-                foreach( KeyValuePair<string, AmazonList> pair in skuDictionary)
-                {
-                    context.AmazonList.Remove(pair.Value);
-                }
-                context.SaveChanges();
             }
+            reader.Close();
+
+            foreach( KeyValuePair<string, AmazonList> pair in skuDictionary)
+            {
+                context.AmazonList.Remove(pair.Value);
+            }
+            context.SaveChanges();
         }
     }
 }

@@ -18,7 +18,7 @@ namespace erp.Controllers
             m_platformServiceFactory = platformServiceFactory;
         }
 
-        [HttpGet("Inventory/GetInventories/{company}/{sku}")]
+        [HttpGet("GetInventories/{company}/{sku}")]
         public IActionResult GetInventories(string company, string sku)
         {
             List<Inventory> inventories = null;
@@ -31,7 +31,7 @@ namespace erp.Controllers
             return Ok(inventories);
         }
 
-        [HttpGet("Inventory/UpdateInventory/{company}/{warehouseId}/{sku}/{quantity}")]
+        [HttpGet("UpdateInventory/{company}/{warehouseId}/{sku}/{quantity}")]
         public IActionResult UpdateInventory(string company, int warehouseId, string sku, int quantity)
         {
             IInventoryService inventoryService = m_platformServiceFactory.GetInventoryService(company);
@@ -41,6 +41,24 @@ namespace erp.Controllers
             }
 
             return Ok();
+        }
+
+        [HttpGet("GetShipmentBoxes/{company}/{warehouseId}/{sku}")]
+        public IActionResult GetShipmentBoxes(string company, string warehouseId, string sku)
+        {
+            IInventoryService inventoryService = m_platformServiceFactory.GetInventoryService(company);
+            List<ShipmentBox> shipmentBoxes = inventoryService.GetShipmentBoxes(warehouseId, sku);
+
+            return Ok(shipmentBoxes);
+        }
+
+        [HttpGet("GetShelves/{company}/{warehouseId}/{sku}")]
+        public IActionResult GetShelves(string company, string warehouseId, string sku)
+        {
+            IInventoryService inventoryService = m_platformServiceFactory.GetInventoryService(company);
+            List<Shelve> shelves = inventoryService.GetShelves(warehouseId, sku);
+
+            return Ok(shelves);
         }
     }
 }

@@ -12,17 +12,36 @@ namespace erpcore
         private Dictionary<string, IOrderService> m_orderServiceDictionary = new Dictionary<string, IOrderService>();
         private Dictionary<string, IInventoryService> m_inventoryServiceDictionary = new Dictionary<string, IInventoryService>();
         private Dictionary<string, string> m_connectionStringDictionary = new Dictionary<string, string>();
+        private Dictionary<string, int[]> m_storeIdsDictionary = new Dictionary<string, int[]>();
 
         public string ContentRootPath {get;set;}
 
         public PlatformServiceFactory(IOptions<ConnectionStringSettings> options)
         {
-            foreach(ConnectionStringSetting setting in options.Value.Settings)
+            foreach (ConnectionStringSetting setting in options.Value.Settings)
             {
                 m_connectionStringDictionary[setting.Company] = setting.ConnectionString;
+                m_storeIdsDictionary[setting.Company] = setting.StoreIds;
+                IEbayService service = new EbayService(this, setting.Company, m_connectionStringDictionary[setting.Company], m_storeIdsDictionary[setting.Company]);
+                m_ebayServiceDictionary[setting.Company] = service;
             }
-            //m_connectionStringDictionary["auto"] = "server=localhost;port=3306;user=root;password=EFDnpz8PeJ758VeN;database=auto";
-            //m_connectionStringDictionary["boshen"] = "server=localhost;port=3306;user=root;password=EFDnpz8PeJ758VeN;database=cai";
+        }
+
+        public PlatformServiceFactory()
+        {
+        }
+
+        public List<string> GetCompanies()
+        {
+            List<string> companies = new List<string>();
+            companies.AddRange(m_connectionStringDictionary.Keys);
+            return companies;
+        }
+
+        public void AddCompany(string company, string connectionString, int[] storeIds)
+        {
+            m_connectionStringDictionary[company] = connectionString;
+            m_storeIdsDictionary[company] = storeIds;
         }
 
         public IEbayService GetEbayService(string company)
@@ -32,15 +51,24 @@ namespace erpcore
             {
                 service = m_ebayServiceDictionary[company];
             }
-            else if(m_connectionStringDictionary.ContainsKey(company))
-            {
-                service = new EbayService(m_connectionStringDictionary[company]);
-                m_ebayServiceDictionary[company] = service;
-            }
 
             return service;
         }
 
+        public IEbayService GetEbayServiceByAccount(string accountName)
+        {
+            IEbayService service = null;
+            foreach( IEbayService ebayService in m_ebayServiceDictionary.Values)
+            {
+                if( ebayService.GetAccountNames().Contains(accountName))
+                {
+                    service = ebayService;
+                    break;
+                }
+            }
+
+            return service;
+        }
 
         public IAmazonService GetAmazonService(string company)
         {
@@ -51,7 +79,7 @@ namespace erpcore
             }
             else if (m_connectionStringDictionary.ContainsKey(company))
             {
-                service = new AmazonService(m_connectionStringDictionary[company]);
+                service = new AmazonService(this, company, m_connectionStringDictionary[company]);
                 m_amazonServiceDictionary[company] = service;
             }
 
@@ -67,7 +95,7 @@ namespace erpcore
             }
             else if (m_connectionStringDictionary.ContainsKey(company))
             {
-                service = new OrderService(this, company, m_connectionStringDictionary[company]);
+                service = new OrderService(this, company, m_connectionStringDictionary[company], m_storeIdsDictionary[company]);
                 m_orderServiceDictionary[company] = service;
             }
 
