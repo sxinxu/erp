@@ -23,6 +23,7 @@ namespace erpcore
         void UpdateSKUListingQuantities(ERPContext context, string sku);
 
         void SyncOrders(List<string> accountNames, DateTime createdTimeFrom, DateTime createdTimeTo);
-       
+
+        void UploadTrackings(List<Tracking> trackings);
     }
 }
