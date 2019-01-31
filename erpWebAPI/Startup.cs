@@ -15,6 +15,9 @@ using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using GraphiQl;
+using erpWebAPI.Models;
+using GraphQL.Types;
+using GraphQL;
 
 namespace erpWebAPI
 {
@@ -40,6 +43,12 @@ namespace erpWebAPI
             {
                 options.Filters.Add(typeof(JsonExceptionFilter));
             });
+
+            services.AddSingleton<IDocumentExecuter, DocumentExecuter>();
+            services.AddSingleton<ERPQuery>();
+            services.AddSingleton<ERPQuery>();
+            var sp = services.BuildServiceProvider();
+            services.AddSingleton<ISchema>(new ERPSchema(new FuncDependencyResolver(type => sp.GetService(type))));
         }
 
         // This method gets called by the runtime. Use this method to configure the HTTP request pipeline.
