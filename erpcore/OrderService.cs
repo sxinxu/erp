@@ -901,5 +901,41 @@ namespace erpcore
             }
         }
 
+
+        public void ExportUPS()
+        {
+            using (ERPContext context = new ERPContext(m_connectionString))
+            {
+
+            }
+        }
+
+        public void UploadTrackings( List<Tracking> trackings)
+        {
+            using (ERPContext context = new ERPContext(m_connectionString))
+            {
+                foreach( Tracking tracking in trackings )
+                {
+                    var q = from ebayOrder in context.EbayOrder
+                            where ebayOrder.EbayId == tracking.OrderId
+                            select ebayOrder;
+                    if( q.Count() > 0 )
+                    {
+                        EbayOrder order = q.First();
+                        order.EbayTracknumber = tracking.TrackingNumber;
+                        order.Ordershipfee = (float)tracking.ShippingFee;
+                        order.EbayCarrier = tracking.Carrier.ToString();
+                    }
+                }
+                context.SaveChanges();
+            }
+        }
+
+
+        public void MarkShipped( List<int> orderIds )
+        {
+
+        }
     }
+
 }

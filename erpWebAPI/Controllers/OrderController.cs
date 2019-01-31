@@ -96,5 +96,19 @@ namespace erpWebAPI.Controllers
             }
             return Ok();
         }
+
+        public class UploadTrackingsInput
+        {
+            public string Company { get; set; }
+            public List<Tracking> Trackings;
+        }
+
+        [HttpPost("UploadTrackings")]
+        public IActionResult UploadTrackings([FromBody]  UploadTrackingsInput input )
+        {
+            IOrderService orderService = m_platformServiceFactory.GetOrderService( input.Company);
+            orderService.UploadTrackings(input.Trackings);
+            return Ok();
+        }
     }
 }
