@@ -12,7 +12,6 @@ namespace erpWebAPI.Models
         public ERPSchema( IDependencyResolver resolver):base(resolver)
         {
             Query = resolver.Resolve<ERPQuery>();
-            Mutation = resolver.Resolve<ERPMutation>();
         }
     }
 }
