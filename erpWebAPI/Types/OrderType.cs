@@ -9,7 +9,7 @@ namespace erpWebAPI.Types
 {
     public class OrderType : ObjectGraphType<Order>
     {
-        public OrderType( Order order )
+        public OrderType()
         {
             Name = "Order";
             Description = "Order";
@@ -35,9 +35,7 @@ namespace erpWebAPI.Types
             Field(o => o.ShippingFee);
             Field(o => o.RecordNumber);
             Field(o => o.CreatedTime);
-            Field(o => o.PaidTime);
-            Field(o => o.ShippedTime);
-            Field(o => o.MarketTime);
+            //Field(o => o.MarketTime);
         }
     }
 }

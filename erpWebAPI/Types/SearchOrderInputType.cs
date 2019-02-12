@@ -9,7 +9,7 @@ namespace erpWebAPI.Types
 {
     public class SearchOrderInputType : InputObjectGraphType<SearchOrderInput>
     {
-        public SearchOrderInputType(SearchOrderInput searchOrderInput)
+        public SearchOrderInputType()
         {
             Name = "SearchOrderInput";
             Description = "SearchOrderInput";

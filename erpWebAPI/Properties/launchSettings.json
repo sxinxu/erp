@@ -11,7 +11,7 @@
     "IIS Express": {
       "commandName": "IISExpress",
       "launchBrowser": true,
-      "launchUrl": "GetShelves/auto/Middletown/01SHC1303CBK",
+      "launchUrl": "GraphQL",
       "environmentVariables": {
         "ASPNETCORE_ENVIRONMENT": "Development"
       }

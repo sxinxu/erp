@@ -18,6 +18,7 @@ using GraphiQl;
 using erpWebAPI.Models;
 using GraphQL.Types;
 using GraphQL;
+using erpWebAPI.Types;
 
 namespace erpWebAPI
 {
@@ -46,7 +47,8 @@ namespace erpWebAPI
 
             services.AddSingleton<IDocumentExecuter, DocumentExecuter>();
             services.AddSingleton<ERPQuery>();
-            services.AddSingleton<ERPQuery>();
+            services.AddSingleton<OrderType>();
+            services.AddSingleton<SearchOrderInputType>();
             var sp = services.BuildServiceProvider();
             services.AddSingleton<ISchema>(new ERPSchema(new FuncDependencyResolver(type => sp.GetService(type))));
         }
