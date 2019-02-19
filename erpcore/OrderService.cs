@@ -936,6 +936,23 @@ namespace erpcore
         {
 
         }
+        public List<OrderSummary> GetOrderSummary()
+        {
+            List<OrderSummary> summaries = new List<OrderSummary>();
+
+            using (ERPContext context = new ERPContext(m_connectionString))
+            {
+                var q = from ebayTopMenu in context.EbayTopmenu
+                        join ebayOrder in context.EbayOrder
+                        on ebayTopMenu.Id.ToString() equals ebayOrder.Status
+                        group new { ebayTopMenu, ebayOrder } by new { ebayTopMenu.Id, ebayTopMenu.Name } into g
+                        select new OrderSummary { CategoryId = g.Key.Id, CategoryName = g.Key.Name, Count = g.Count()};
+
+                summaries = q.ToList();
+            }
+
+            return summaries;
+        }
     }
 
 }

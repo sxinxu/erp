@@ -25,6 +25,15 @@ namespace erpWebAPI.Models
                     return platformServiceFactory.GetOrderService(searchOrderInput.Company).SearchOrders(searchOrderInput.SearchType, searchOrderInput.SearchText);
                 }
                 );
+
+            Field<ListGraphType<OrderSummaryType>>("orderSummary",
+                arguments: new QueryArguments(
+                    new QueryArgument<NonNullGraphType<StringGraphType>> { Name = "company", Description = "Company" }),
+                resolve: context =>
+                {
+                    string company = context.GetArgument<string>("company");
+                    return platformServiceFactory.GetOrderService(company).GetOrderSummary();
+                });
         }
     }
 }

@@ -48,7 +48,9 @@ namespace erpWebAPI
             services.AddSingleton<IDocumentExecuter, DocumentExecuter>();
             services.AddSingleton<ERPQuery>();
             services.AddSingleton<OrderType>();
+            services.AddSingleton<OrderDetailType>();
             services.AddSingleton<SearchOrderInputType>();
+            services.AddSingleton<OrderSummaryType>();
             var sp = services.BuildServiceProvider();
             services.AddSingleton<ISchema>(new ERPSchema(new FuncDependencyResolver(type => sp.GetService(type))));
         }

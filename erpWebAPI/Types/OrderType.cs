@@ -35,7 +35,8 @@ namespace erpWebAPI.Types
             Field(o => o.ShippingFee);
             Field(o => o.RecordNumber);
             Field(o => o.CreatedTime);
-            //Field(o => o.MarketTime);
+            Field(o => o.MarketTime, nullable: true);
+            Field<ListGraphType<OrderDetailType>>("orderDetails", "OrderDetails");
         }
     }
 }

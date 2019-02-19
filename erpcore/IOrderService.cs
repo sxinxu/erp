@@ -25,5 +25,7 @@ namespace erpcore
         void SyncOrders(List<string> accountNames, DateTime createdTimeFrom, DateTime createdTimeTo);
 
         void UploadTrackings(List<Tracking> trackings);
+
+        List<OrderSummary> GetOrderSummary();
     }
 }
