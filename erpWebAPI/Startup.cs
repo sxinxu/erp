@@ -19,6 +19,7 @@ using erpWebAPI.Models;
 using GraphQL.Types;
 using GraphQL;
 using erpWebAPI.Types;
+using erpcore.entities;
 
 namespace erpWebAPI
 {
@@ -34,8 +35,8 @@ namespace erpWebAPI
         // This method gets called by the runtime. Use this method to add services to the container.
         public void ConfigureServices(IServiceCollection services)
         {
-            services.Configure<ConnectionStringSettings>(Configuration.GetSection("ConnectionStringSettings"));
-            services.AddSingleton<IPlatformServiceFactory, PlatformServiceFactory>();
+            services.AddScoped<ERPContext>();
+            services.AddScoped<IOrderService, OrderService>();
             //services.AddSingleton<IHostedService, AmazonSyncHostService>();
             services.AddCors(options => options.AddPolicy("AllowAll", p => p.AllowAnyOrigin()
                                                               .AllowAnyMethod()

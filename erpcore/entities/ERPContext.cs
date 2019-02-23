@@ -147,18 +147,13 @@ namespace erpcore.entities
         // Unable to generate entity type for table 'wuliu_ck1_zx'. Please see the warning messages.
         // Unable to generate entity type for table 'wuliu_fedexzy'. Please see the warning messages.
         // Unable to generate entity type for table 'wuliu_yfh_yfb'. Please see the warning messages.
-        private readonly string connectionString;
-        public ERPContext(string connectionString):base()
-        {
-            this.connectionString = connectionString;
-        }
+        
         protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
         {
             if (!optionsBuilder.IsConfigured)
             {
 #warning To protect potentially sensitive information in your connection string, you should move it out of source code. See http://go.microsoft.com/fwlink/?LinkId=723263 for guidance on storing connection strings.
-                //optionsBuilder.UseMySql("server=localhost;port=3306;user=root;password=EFDnpz8PeJ758VeN;database=v3-all");
-                optionsBuilder.UseMySql(connectionString);
+                optionsBuilder.UseMySql("server=localhost;port=3306;user=root;password=EFDnpz8PeJ758VeN;database=v3-all");
             }
         }
 

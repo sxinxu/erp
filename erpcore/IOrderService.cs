@@ -9,7 +9,7 @@ namespace erpcore
     public interface IOrderService
     {
         List<Order> SearchOrders(string searchType, string searchText);
-
+        /*
         List<Order> GetOrdersToShip();
 
         Profit GetProfits(string dateFilter, string skuFilter, string account);
@@ -25,7 +25,7 @@ namespace erpcore
         void SyncOrders(List<string> accountNames, DateTime createdTimeFrom, DateTime createdTimeTo);
 
         void UploadTrackings(List<Tracking> trackings);
-
+        */
         List<OrderSummary> GetOrderSummary();
     }
 }
